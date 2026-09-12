@@ -1,0 +1,129 @@
+/* New Arrival Page Styling */
+
+.new-arrival-page {
+  min-height: 80vh;
+  background: #faf9f6;
+  padding-bottom: 80px;
+}
+
+.new-arrival-banner {
+  background: linear-gradient(135deg, #1c1917 0%, #0c0a09 100%);
+  color: #ffffff;
+  padding: 60px 8%;
+  text-align: center;
+  border-bottom: 2px solid #d4af37;
+}
+
+.new-tag-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
+.new-arrival-banner h1 {
+  font-size: 44px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.new-arrival-banner p {
+  font-size: 16px;
+  color: #cccccc;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.new-arrival-container {
+  max-width: 1280px;
+  margin: 40px auto 0;
+  padding: 0 5%;
+}
+
+.new-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 35px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+}
+
+.new-pill-group {
+  display: flex;
+  gap: 10px;
+}
+
+.new-pill {
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 1px solid #e0e0e0;
+  background: #ffffff;
+  color: #444;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.new-pill:hover {
+  border-color: #d4af37;
+  color: #b8860b;
+}
+
+.new-pill.active {
+  background: #111111;
+  color: #ffffff;
+  border-color: #111111;
+}
+
+.new-product-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 30px;
+}
+
+.new-card-badge-wrapper {
+  position: relative;
+}
+
+.just-arrived-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  background: linear-gradient(135deg, #d4af37, #aa7c11);
+  color: #000000;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 1000px) {
+  .new-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .new-arrival-banner h1 {
+    font-size: 32px;
+  }
+  .new-product-grid {
+    grid-template-columns: 1fr;
+  }
+}

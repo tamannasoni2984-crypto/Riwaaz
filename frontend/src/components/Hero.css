@@ -1,0 +1,301 @@
+/* Front Page Hero Section with Embedded Video & Flying Ring */
+
+.hero-section {
+  position: relative;
+  width: 100%;
+  min-height: 88vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: #0d0d0d;
+  color: #ffffff;
+}
+
+/* Background Video Embedded Directly on Homepage */
+.hero-video-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.hero-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.65;
+  filter: brightness(0.9) contrast(1.1);
+}
+
+.hero-overlay-dark {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 75% 50%, transparent 20%, rgba(13, 13, 13, 0.85) 80%),
+    linear-gradient(to right, rgba(13, 13, 13, 0.95) 0%, rgba(13, 13, 13, 0.5) 50%, rgba(13, 13, 13, 0.8) 100%);
+}
+
+.hero-container {
+  position: relative;
+  z-index: 2;
+  width: 92%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 80px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 60px;
+  box-sizing: border-box;
+}
+
+.hero-text-content {
+  flex: 1.2;
+  max-width: 680px;
+}
+
+.hero-collection-tag {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #f3e5ab;
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 8px 18px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+}
+
+.hero-main-title {
+  font-size: clamp(36px, 4.5vw, 64px);
+  line-height: 1.12;
+  font-weight: 700;
+  margin-bottom: 22px;
+  letter-spacing: 1px;
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #ffd700 0%, #d4af37 50%, #aa7c11 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-description {
+  font-size: clamp(15px, 1.4vw, 19px);
+  line-height: 1.6;
+  color: #e0e0e0;
+  margin-bottom: 38px;
+  font-weight: 300;
+  max-width: 580px;
+}
+
+.hero-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hero-btn {
+  padding: 16px 36px;
+  border-radius: 30px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primary-cta {
+  background: linear-gradient(135deg, #d4af37, #b8860b);
+  color: #0d0d0d;
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+}
+
+.primary-cta:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(212, 175, 55, 0.6);
+  background: linear-gradient(135deg, #f3e5ab, #d4af37);
+}
+
+.secondary-cta {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.secondary-cta:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-3px);
+  border-color: #ffffff;
+}
+
+/* Flying Floating Ring Container directly on the front page */
+.hero-flying-ring-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+}
+
+.flying-diamond-ring {
+  width: auto;
+  max-width: clamp(220px, 25vw, 360px);
+  height: auto;
+  z-index: 3;
+  filter: drop-shadow(0 20px 35px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 30px rgba(212, 175, 55, 0.7));
+  animation: heroFlyingRingFloat 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes heroFlyingRingFloat {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+
+  33% {
+    transform: translateY(-25px) rotate(6deg) scale(1.05);
+  }
+
+  66% {
+    transform: translateY(-10px) rotate(-4deg) scale(1.02);
+  }
+
+  100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+}
+
+.ring-sparkle-glow {
+  position: absolute;
+  width: clamp(220px, 25vw, 320px);
+  height: clamp(220px, 25vw, 320px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.35) 0%, rgba(212, 175, 55, 0.1) 60%, transparent 80%);
+  animation: auraPulseFront 4s infinite alternate ease-in-out;
+}
+
+@keyframes auraPulseFront {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(1.3);
+    opacity: 0.9;
+  }
+}
+
+.flying-sparkle {
+  position: absolute;
+  color: #ffd700;
+  font-size: 26px;
+  text-shadow: 0 0 12px #ffd700;
+  z-index: 4;
+  animation: sparkleFront 3s infinite ease-in-out alternate;
+}
+
+.s-1 {
+  top: 20px;
+  left: 60px;
+  animation-delay: 0s;
+}
+
+.s-2 {
+  bottom: 30px;
+  right: 80px;
+  animation-delay: 1s;
+}
+
+.s-3 {
+  top: 50%;
+  right: 20px;
+  animation-delay: 2s;
+}
+
+@keyframes sparkleFront {
+  0% {
+    opacity: 0.3;
+    transform: scale(0.8) translateY(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1.4) translateY(-12px);
+  }
+}
+
+/* ============================================================= */
+/* MULTI-DEVICE RESPONSIVE BREAKPOINTS (DESKTOP TO MOBILE) */
+/* ============================================================= */
+
+@media (max-width: 1200px) {
+  .hero-container {
+    gap: 40px;
+  }
+}
+
+@media (max-width: 950px) {
+  .hero-section {
+    min-height: auto;
+    padding: 40px 0;
+  }
+
+  .hero-container {
+    flex-direction: column-reverse;
+    text-align: center;
+    padding: 40px 0;
+    gap: 35px;
+  }
+
+  .hero-text-content {
+    max-width: 100%;
+  }
+
+  .hero-description {
+    margin: 0 auto 30px;
+  }
+
+  .hero-actions-row {
+    justify-content: center;
+  }
+
+  .hero-flying-ring-wrapper {
+    min-height: 280px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-collection-tag {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    padding: 6px 14px;
+  }
+
+  .hero-btn {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+
+  .s-1 {
+    left: 20px;
+    top: 10px;
+  }
+
+  .s-2 {
+    right: 20px;
+    bottom: 10px;
+  }
+}
