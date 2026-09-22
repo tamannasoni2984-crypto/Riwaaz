@@ -19,15 +19,13 @@ const DEFAULT_CATEGORIES = [
   "Women",
 ];
 
-// Helper to normalize singular/plural variations for flawless matching
 const normalizeString = (str) => {
   if (!str) return "";
   let clean = str.trim().toLowerCase();
-  // Strip trailing 's' for basic singular comparison if length > 3
   if (clean.endsWith("ies")) {
-    clean = clean.slice(0, -3) + "y"; // accessories -> accessory
+    clean = clean.slice(0, -3) + "y";
   } else if (clean.endsWith("s") && !clean.endsWith("ss")) {
-    clean = clean.slice(0, -1); // rings -> ring, necklaces -> necklace
+    clean = clean.slice(0, -1);
   }
   return clean;
 };
@@ -35,11 +33,13 @@ const normalizeString = (str) => {
 function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlCategory = searchParams.get("category");
+  const urlSearch = searchParams.get("search");
 
   const { products, loading } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState(urlCategory || "All");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(urlSearch || "");
   const [sortBy, setSortBy] = useState("featured");
+  const [maxPriceFilter, setMaxPriceFilter] = useState(250000);
 
   useEffect(() => {
     if (urlCategory) {
@@ -48,6 +48,12 @@ function Shop() {
       setSelectedCategory("All");
     }
   }, [urlCategory]);
+
+  useEffect(() => {
+    if (urlSearch) {
+      setSearchQuery(urlSearch);
+    }
+  }, [urlSearch]);
 
   const handleCategoryChange = (cat) => {
     setSelectedCategory(cat);
@@ -63,14 +69,28 @@ function Shop() {
     setSelectedCategory("All");
     setSearchQuery("");
     setSortBy("featured");
+    setMaxPriceFilter(250000);
     setSearchParams({});
   };
 
-  // Dynamically extract all available categories present in products plus defaults
-  const dynamicCategories = useMemo(() => {
+  // Derive categories with live counts
+  const categoryStats = useMemo(() => {
     const productCategories = products.map((p) => p.category).filter(Boolean);
     const set = new Set(["All", ...DEFAULT_CATEGORIES, ...productCategories]);
-    return Array.from(set);
+    const categoriesArray = Array.from(set);
+
+    return categoriesArray.map((cat) => {
+      if (cat === "All") {
+        return { name: "All", count: products.length };
+      }
+      const count = products.filter((p) => {
+        const normSelected = normalizeString(cat);
+        const itemCatNorm = normalizeString(p.category);
+        const itemSubCatNorm = normalizeString(p.subCategory);
+        return itemCatNorm === normSelected || itemSubCatNorm === normSelected;
+      }).length;
+      return { name: cat, count };
+    });
   }, [products]);
 
   const filteredProducts = useMemo(() => {
@@ -78,9 +98,13 @@ function Shop() {
 
     return products
       .filter((item) => {
-        if (selectedCategory === "All") {
-          // No category filtering
-        } else {
+        // Price Filter
+        if (Number(item.price) > maxPriceFilter) {
+          return false;
+        }
+
+        // Category Filter
+        if (selectedCategory !== "All") {
           const itemCatNorm = normalizeString(item.category);
           const itemSubCatNorm = normalizeString(item.subCategory);
 
@@ -90,7 +114,6 @@ function Shop() {
             item.category?.toLowerCase() === selectedCategory.toLowerCase() ||
             item.subCategory?.toLowerCase() === selectedCategory.toLowerCase();
 
-          // If looking for 'jewellery', also match items with subCategory jewellery or standard jewelry categories
           const matchesJewellery =
             normSelected === "jewellery" || normSelected === "jewelry";
 
@@ -99,6 +122,7 @@ function Shop() {
           }
         }
 
+        // Search Filter
         const matchesSearch =
           !searchQuery.trim() ||
           item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,12 +133,13 @@ function Shop() {
         return matchesSearch;
       })
       .sort((a, b) => {
-        if (sortBy === "price-low") return (a.price || 0) - (b.price || 0);
-        if (sortBy === "price-high") return (b.price || 0) - (a.price || 0);
-        if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
+        if (sortBy === "price-low") return (Number(a.price) || 0) - (Number(b.price) || 0);
+        if (sortBy === "price-high") return (Number(b.price) || 0) - (Number(a.price) || 0);
+        if (sortBy === "rating") return (Number(b.rating) || 0) - (Number(a.rating) || 0);
+        if (sortBy === "name-asc") return (a.name || "").localeCompare(b.name || "");
         return 0; // default featured
       });
-  }, [products, selectedCategory, searchQuery, sortBy]);
+  }, [products, selectedCategory, searchQuery, sortBy, maxPriceFilter]);
 
   return (
     <div className="shop-page">
@@ -135,35 +160,54 @@ function Shop() {
           />
 
           <div className="shop-category-pills">
-            {dynamicCategories.map((cat) => {
+            {categoryStats.map(({ name, count }) => {
               const isSelected =
-                normalizeString(selectedCategory) === normalizeString(cat) ||
-                (selectedCategory === "All" && cat === "All");
+                normalizeString(selectedCategory) === normalizeString(name) ||
+                (selectedCategory === "All" && name === "All");
 
               return (
                 <button
-                  key={cat}
+                  key={name}
                   className={`pill-btn ${isSelected ? "active" : ""}`}
-                  onClick={() => handleCategoryChange(cat)}
+                  onClick={() => handleCategoryChange(name)}
                 >
-                  {cat}
+                  {name} {count > 0 ? `(${count})` : ""}
                 </button>
               );
             })}
           </div>
 
-          <div className="shop-sort-box">
-            <label htmlFor="shop-sort">Sort by:</label>
-            <select
-              id="shop-sort"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="featured">Featured</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-              <option value="rating">Highest Rated</option>
-            </select>
+          <div style={{ display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "space-between" }}>
+            {/* Price Filter Slider */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", fontWeight: "600" }}>
+              <label htmlFor="price-slider">Max Price: ₹{maxPriceFilter.toLocaleString("en-IN")}</label>
+              <input
+                id="price-slider"
+                type="range"
+                min="5000"
+                max="250000"
+                step="5000"
+                value={maxPriceFilter}
+                onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
+                style={{ accentColor: "#b8860b", cursor: "pointer" }}
+              />
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="shop-sort-box">
+              <label htmlFor="shop-sort">Sort by:</label>
+              <select
+                id="shop-sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="featured">Featured Masterpieces</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="rating">Highest Rated ★</option>
+                <option value="name-asc">Alphabetical A-Z</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -183,7 +227,7 @@ function Shop() {
           <div className="shop-empty-state">
             <span className="empty-icon">💎</span>
             <h3>No Jewels Found in "{selectedCategory}"</h3>
-            <p>We couldn't find any products matching your selected search or filter criteria.</p>
+            <p>We couldn't find any products matching your selected search or price criteria (Under ₹{maxPriceFilter.toLocaleString("en-IN")}).</p>
             <button className="reset-filters-btn" onClick={handleResetFilters}>
               Reset All Filters
             </button>

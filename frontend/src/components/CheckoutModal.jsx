@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useOrders } from "../context/OrderContext";
 import { useToast } from "../context/ToastContext";
 import "./CheckoutModal.css";
 
 export default function CheckoutModal({ isOpen, onClose }) {
   const { cartItems, cartTotal, clearCart } = useCart();
   const { user, addresses } = useAuth();
-  const { showToast } = useToast();
+  const { placeOrder } = useOrders();
+  const { showToast } = useToast?.() || {};
 
   // Selected address state
   const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
@@ -15,9 +17,9 @@ export default function CheckoutModal({ isOpen, onClose }) {
     defaultAddr ? defaultAddr.id : "new"
   );
 
-  // New Address state if user chooses to type new address
-  const [newFullName, setNewFullName] = useState(user ? user.name : "");
-  const [newPhone, setNewPhone] = useState(user ? user.phone : "");
+  // New Address state
+  // const [newFullName, setNewFullName] = useState(user ? user.name : "");
+  // const [newPhone, setNewPhone] = useState(user ? user.phone : "+91 98765 43210");
   const [newStreet, setNewStreet] = useState("");
   const [newCity, setNewCity] = useState("Mumbai");
   const [newPincode, setNewPincode] = useState("400001");
@@ -26,28 +28,80 @@ export default function CheckoutModal({ isOpen, onClose }) {
   const [paymentMethod, setPaymentMethod] = useState("upi");
 
   // Order Placement state
+  const [isPlacing, setIsPlacing] = useState(false);
   const [isPlaced, setIsPlaced] = useState(false);
   const [placedOrderId, setPlacedOrderId] = useState("");
+  const [placedGrandTotal, setPlacedGrandTotal] = useState(0);
 
   if (!isOpen) return null;
 
   const taxes = Math.round(cartTotal * 0.18); // 18% GST
   const grandTotal = cartTotal + taxes;
 
-  const handlePlaceOrder = (e) => {
+  const handlePlaceOrder = async (e) => {
     e.preventDefault();
+    setIsPlacing(true);
 
-    // Generate Order ID
-    const orderId = "RW-2026-" + Math.floor(1000 + Math.random() * 9000);
-    setPlacedOrderId(orderId);
-    setIsPlaced(true);
+    let customerInfo = {
+      fullName: user?.name || "Valued Customer",
+      email: user?.email || "",
+      phone: user?.phone || "",
+    };
 
-    // Trigger Success Toast Popup
-    if (showToast) {
-      showToast(`🎉 Order Placed Successfully! (${orderId})`, "success");
+    let shippingAddress = {};
+
+    if (selectedAddressId !== "new" && addresses.length > 0) {
+      const selected = addresses.find((a) => a.id === selectedAddressId) || addresses[0];
+      customerInfo.fullName = selected.fullName;
+      customerInfo.phone = selected.phone;
+      shippingAddress = {
+        street: selected.street,
+        city: selected.city,
+        state: selected.state || "Maharashtra",
+        pincode: selected.pincode,
+      };
+    } else {
+      shippingAddress = {
+        street: newStreet || "Luxury Avenue",
+        city: newCity || "Mumbai",
+        state: "Maharashtra",
+        pincode: newPincode || "400001",
+      };
     }
 
-    // Clear cart
+    const orderPayload = {
+      customer: customerInfo,
+      shippingAddress,
+      items: cartItems.map((item) => ({
+        id: item.id || item._id,
+        _id: item._id || item.id,
+        name: item.name,
+        image: item.image || "/images/ring.png",
+        price: Number(item.price),
+        quantity: item.quantity || 1,
+        karat: item.selectedKarat || "18K Yellow Gold",
+        size: item.selectedSize || "Standard",
+      })),
+      itemsTotal: cartTotal,
+      tax: taxes,
+      shippingFee: 0,
+      discount: 0,
+      grandTotal,
+      paymentMethod,
+    };
+
+    const savedOrder = await placeOrder(orderPayload);
+    const finalOrderId = savedOrder.orderId || "RW-2026-" + Math.floor(1000 + Math.random() * 9000);
+
+    setPlacedOrderId(finalOrderId);
+    setPlacedGrandTotal(grandTotal);
+    setIsPlaced(true);
+    setIsPlacing(false);
+
+    if (showToast) {
+      showToast(`🎉 Order Placed Successfully! (${finalOrderId})`, "success");
+    }
+
     clearCart();
   };
 
@@ -73,16 +127,16 @@ export default function CheckoutModal({ isOpen, onClose }) {
               Order ID: <strong>#{placedOrderId}</strong>
             </p>
             <p className="success-desc">
-              Thank you for shopping with RIWAAZ. Your luxury items will be handcrafted, insured, and delivered in 2-4 business days.
+              Thank you for shopping with RIWAAZ. Your luxury pieces will be handcrafted, insured, and delivered in 2-4 business days.
             </p>
 
             <div className="order-summary-box">
               <h4>Order Breakdown</h4>
-              <p>Items Subtotal: <span>₹{cartTotal.toLocaleString("en-IN")}</span></p>
-              <p>GST & Insurance (18%): <span>₹{taxes.toLocaleString("en-IN")}</span></p>
-              <p>Shipping: <span className="free-shipping">FREE Express</span></p>
+              <p>Items Subtotal: <span>₹{cartTotal ? cartTotal.toLocaleString("en-IN") : (placedGrandTotal - Math.round(placedGrandTotal * 0.18)).toLocaleString("en-IN")}</span></p>
+              <p>GST & White-Glove Insurance (18%): <span>₹{taxes ? taxes.toLocaleString("en-IN") : Math.round(placedGrandTotal * 0.18).toLocaleString("en-IN")}</span></p>
+              <p>Shipping: <span className="free-shipping">FREE Express Insured</span></p>
               <hr />
-              <p className="total-row">Grand Total Paid: <strong>₹{grandTotal.toLocaleString("en-IN")}</strong></p>
+              <p className="total-row">Grand Total Paid: <strong>₹{placedGrandTotal.toLocaleString("en-IN")}</strong></p>
             </div>
 
             <button className="continue-shopping-btn" onClick={handleClose}>
@@ -103,15 +157,14 @@ export default function CheckoutModal({ isOpen, onClose }) {
                 {/* 1. SHIPPING ADDRESS */}
                 <div className="checkout-section">
                   <h3>1. Select Delivery Address</h3>
-                  
+
                   {addresses.length > 0 && (
                     <div className="saved-addresses-selector">
                       {addresses.map((addr) => (
                         <label
                           key={addr.id}
-                          className={`checkout-addr-option ${
-                            selectedAddressId === addr.id ? "selected" : ""
-                          }`}
+                          className={`checkout-addr-option ${selectedAddressId === addr.id ? "selected" : ""
+                            }`}
                         >
                           <input
                             type="radio"
@@ -129,9 +182,8 @@ export default function CheckoutModal({ isOpen, onClose }) {
                       ))}
 
                       <label
-                        className={`checkout-addr-option ${
-                          selectedAddressId === "new" ? "selected" : ""
-                        }`}
+                        className={`checkout-addr-option ${selectedAddressId === "new" ? "selected" : ""
+                          }`}
                       >
                         <input
                           type="radio"
@@ -147,8 +199,8 @@ export default function CheckoutModal({ isOpen, onClose }) {
                     </div>
                   )}
 
-                  {/* New Address Input Form if "new" selected or no addresses */}
-                  {(selectedAddressId === "new" || addresses.length === 0) && (
+                  {/* New Address Input Form */}
+                  {/* {(selectedAddressId === "new" || addresses.length === 0) && (
                     <div className="new-address-form-box">
                       <div className="form-row-2">
                         <input
@@ -190,7 +242,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
                         />
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </div>
 
                 {/* 2. PAYMENT METHOD */}
@@ -239,12 +291,26 @@ export default function CheckoutModal({ isOpen, onClose }) {
                   <h3>Order Summary ({cartItems.length} items)</h3>
 
                   <div className="side-items-list">
-                    {cartItems.map((item) => (
-                      <div key={item.id} className="side-item-row">
-                        <img src={item.image} alt={item.name} />
+                    {cartItems.map((item, idx) => (
+                      <div key={`${item.id || item._id}-${idx}`} className="side-item-row">
+                        <img
+                          src={item.image || "/images/ring.png"}
+                          alt={item.name}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/images/ring.png";
+                          }}
+                        />
                         <div>
                           <h6>{item.name}</h6>
-                          <p>Qty: {item.quantity} × ₹{item.price.toLocaleString("en-IN")}</p>
+                          <p>
+                            Qty: {item.quantity} × ₹{(Number(item.price) || 0).toLocaleString("en-IN")}
+                          </p>
+                          {item.selectedKarat && (
+                            <span style={{ fontSize: "11px", color: "#888" }}>
+                              {item.selectedKarat}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -252,7 +318,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
 
                   <div className="side-calculation">
                     <p>Subtotal: <span>₹{cartTotal.toLocaleString("en-IN")}</span></p>
-                    <p>GST & Insurance (18%): <span>₹{taxes.toLocaleString("en-IN")}</span></p>
+                    <p>GST & White-Glove Insurance (18%): <span>₹{taxes.toLocaleString("en-IN")}</span></p>
                     <p>Express Shipping: <span className="free-tag">FREE</span></p>
                     <hr />
                     <p className="grand-total-row">
@@ -260,8 +326,8 @@ export default function CheckoutModal({ isOpen, onClose }) {
                     </p>
                   </div>
 
-                  <button type="submit" className="place-order-btn">
-                    Place Order (₹{grandTotal.toLocaleString("en-IN")})
+                  <button type="submit" className="place-order-btn" disabled={isPlacing}>
+                    {isPlacing ? "Securing Order..." : `Place Order (₹${grandTotal.toLocaleString("en-IN")})`}
                   </button>
                 </div>
               </div>

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminPanel from "../components/AdminPanel.jsx";
-import AdminLogin from "./AdminLogin.jsx";
 
 function Admin() {
-  const [adminUser, setAdminUser] = useState(() => {
+  const navigate = useNavigate();
+  const [adminUser] = useState(() => {
     try {
-      const sessionData = sessionStorage.getItem("riwaaz_admin") || localStorage.getItem("riwaaz_admin");
+      const sessionData = sessionStorage.getItem("riwaaz_admin");
       return sessionData ? JSON.parse(sessionData) : null;
     } catch {
       return null;
@@ -13,20 +14,17 @@ function Admin() {
   });
 
   useEffect(() => {
-    if (adminUser) {
-      sessionStorage.setItem("riwaaz_admin", JSON.stringify(adminUser));
-      localStorage.setItem("riwaaz_admin", JSON.stringify(adminUser));
+    // If not authenticated in session, redirect to /admin-login
+    if (!adminUser) {
+      navigate("/admin-login", {
+        replace: true,
+        state: { error: "Please log in with admin credentials to access the Admin Panel." },
+      });
     }
-  }, [adminUser]);
+  }, [adminUser, navigate]);
 
-  // If not logged in in current session, render Login page with Access Denied error banner first
   if (!adminUser) {
-    return (
-      <AdminLogin
-        defaultError="⚠️ Access Denied: Please log in to access the Admin Panel."
-        onSuccess={(user) => setAdminUser(user)}
-      />
-    );
+    return null;
   }
 
   return <AdminPanel />;

@@ -6,7 +6,7 @@ import {
   logoutAdmin,
   getAdminProfile,
 } from "../controller/adminController.js";
-import adminMiddleware from "../middleware/adminMIddleware.js";
+import adminMiddleware from "../middleware/adminMiddleware.js";
 const router = express.Router();
 
 router.get("/", getAdmins);

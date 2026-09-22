@@ -21,33 +21,41 @@ export function WishlistProvider({ children }) {
   }, [wishlistItems]);
 
   const toggleWishlist = useCallback((product) => {
-    if (!product || !product.id) return;
+    if (!product) return;
+    const prodId = String(product._id || product.id);
+
     setWishlistItems((currentItems) => {
       const exists = currentItems.some(
-        (item) => item.id === product.id
+        (item) => String(item.id || item._id) === prodId
       );
 
       if (exists) {
         return currentItems.filter(
-          (item) => item.id !== product.id
+          (item) => String(item.id || item._id) !== prodId
         );
       }
 
-      return [...currentItems, product];
+      return [...currentItems, { ...product, id: prodId, _id: prodId }];
     });
   }, []);
 
-  const isInWishlist = useCallback((productId) => {
-    if (!productId) return false;
-    return wishlistItems.some(
-      (item) => item.id === productId
-    );
-  }, [wishlistItems]);
+  const isInWishlist = useCallback(
+    (productId) => {
+      if (!productId) return false;
+      const strId = String(productId);
+      return wishlistItems.some(
+        (item) => String(item.id || item._id) === strId
+      );
+    },
+    [wishlistItems]
+  );
 
   const removeFromWishlist = useCallback((productId) => {
+    if (!productId) return;
+    const strId = String(productId);
     setWishlistItems((currentItems) =>
       currentItems.filter(
-        (item) => item.id !== productId
+        (item) => String(item.id || item._id) !== strId
       )
     );
   }, []);

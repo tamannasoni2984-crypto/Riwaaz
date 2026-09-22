@@ -29,14 +29,14 @@ const COLLECTIONS_LIST = [
     id: "earrings",
     name: "Diamond Earrings",
     label: "View Diamond Earrings",
-    image: "/images/earring.png",
+    image: "/images/jewellery.png",
     description: "Intricately sculpted heritage Kundan and diamond accessories for extraordinary celebrations.",
   },
   {
     id: "bracelets",
     name: "Diamond Bracelets",
     label: "View Diamond Bracelets",
-    image: "/images/bracelet.png",
+    image: "/images/accessories.png",
     description: "Intricately sculpted heritage Kundan and diamond accessories for extraordinary celebrations.",
   },
   {
@@ -116,7 +116,14 @@ function Collections() {
               onClick={() => setSelectedCol(col)}
             >
               <div className="col-img-wrapper">
-                <img src={col.image} alt={col.name} />
+                <img
+                  src={col.image}
+                  alt={col.name}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/images/ring.png";
+                  }}
+                />
               </div>
               <div className="col-card-info">
                 <h3>{col.name}</h3>

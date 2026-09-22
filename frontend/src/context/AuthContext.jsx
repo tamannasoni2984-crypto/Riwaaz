@@ -1,31 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { loginUser, registerUserApi } from "../services/api";
 
 const AuthContext = createContext();
 
-const DEFAULT_ADDRESSES = [
-  {
-    id: "addr-1",
-    label: "Home",
-    fullName: "Tamanna Soni",
-    phone: "+91 98765 43210",
-    street: "402 Luxury Heritage Palms, Altamount Road",
-    city: "Mumbai",
-    state: "Maharashtra",
-    pincode: "400026",
-    isDefault: true,
-  },
-  {
-    id: "addr-2",
-    label: "Work",
-    fullName: "Tamanna Soni",
-    phone: "+91 98765 43210",
-    street: "12th Floor, Financial Tower, BKC",
-    city: "Mumbai",
-    state: "Maharashtra",
-    pincode: "400051",
-    isDefault: false,
-  },
-];
+const DEFAULT_ADDRESSES = [];
 
 export function AuthProvider({ children }) {
   // Load User from localStorage
@@ -71,11 +49,37 @@ export function AuthProvider({ children }) {
   }, [addresses]);
 
   // Login handler
-  const login = useCallback((email, password) => {
-    // Basic verification simulation
+  const login = useCallback(async (email, password) => {
     if (!email || !password) return { success: false, message: "Please fill all required fields." };
-    
-    const loggedInUser = {
+
+    try {
+      const res = await loginUser(email, password);
+      if (res.success && res.user) {
+        const loggedUser = {
+          id: res.user.id || res.user._id,
+          name: res.user.name || res.user.fullname || email.split("@")[0],
+          fullname: res.user.fullname || res.user.name || "",
+          email: res.user.email || email,
+          phone: res.user.phone || "",
+          address: res.user.address || {
+            street: "",
+            city: "",
+            state: "",
+            pincode: "",
+          },
+          joinedDate: res.user.joinedDate || "January 2026",
+          memberStatus: res.user.memberStatus || "Gold VIP Member",
+        };
+        setUser(loggedUser);
+        return { success: true, message: res.message || "Welcome back to RIWAAZ!" };
+      } else if (res.message) {
+        return { success: false, message: res.message };
+      }
+    } catch {
+      console.log("ℹ️ [AuthContext] Backend offline / using local auth simulation");
+    }
+
+    const fallbackUser = {
       name: email.split("@")[0].toUpperCase() || "Valued Customer",
       email,
       phone: "+91 98765 43210",
@@ -83,25 +87,58 @@ export function AuthProvider({ children }) {
       memberStatus: "Gold VIP Member",
     };
 
-    setUser(loggedInUser);
+    setUser(fallbackUser);
     return { success: true, message: "Welcome back to RIWAAZ!" };
   }, []);
 
   // Signup handler
-  const signup = useCallback((name, email, phone, password) => {
+  const signup = useCallback(async (name, email, phone, password) => {
     if (!name || !email || !password) {
       return { success: false, message: "Please fill in all mandatory signup fields." };
     }
 
-    const newUser = {
+    try {
+      const res = await registerUserApi({
+        fullname: name,
+        email,
+        phone,
+        password,
+      });
+
+      if (res.success && res.user) {
+        const newUser = {
+          id: res.user.id || res.user._id,
+          name: res.user.name || res.user.fullname || name,
+          fullname: res.user.fullname || name,
+          email: res.user.email || email,
+          phone: res.user.phone || phone || "",
+          address: res.user.address || {
+            street: "",
+            city: "",
+            state: "",
+            pincode: "",
+          },
+          joinedDate: res.user.joinedDate || "Current Season",
+          memberStatus: res.user.memberStatus || "Silver Privilege Member",
+        };
+        setUser(newUser);
+        return { success: true, message: res.message || "Account created successfully!" };
+      } else if (res.message) {
+        return { success: false, message: res.message };
+      }
+    } catch {
+      console.log("ℹ️ [AuthContext] Backend offline / using local signup simulation");
+    }
+
+    const localNewUser = {
       name,
       email,
-      phone: phone || "+91 98765 43210",
+      phone: phone || "",
       joinedDate: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
       memberStatus: "Silver Privilege Member",
     };
 
-    setUser(newUser);
+    setUser(localNewUser);
     return { success: true, message: "Account created successfully! Welcome to RIWAAZ." };
   }, []);
 

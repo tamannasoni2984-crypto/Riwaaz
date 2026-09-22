@@ -1,18 +1,22 @@
 import express from "express";
+
 import upload from "../middleware/uploadMiddleware.js";
+
 import authMiddleware from "../middleware/authMiddleware.js";
-// import { loginUser } from "../controller/userController.js";
+import adminMiddleware from "../middleware/adminMiddleware.js";
 
 import {
   getUsers,
   registerUser,
   loginUser,
   logoutUser,
+  updateUserProfile,
   deleteUser,
 } from "../controller/userController.js";
 
 const router = express.Router();
 
+// Logged-in user
 router.get("/profile", authMiddleware, (req, res) => {
   res.json({
     success: true,
@@ -20,36 +24,14 @@ router.get("/profile", authMiddleware, (req, res) => {
     user: req.user,
   });
 });
-router.get("/", getUsers);
-router.get("/test-upload", (req, res) => {
-  res.send(`
-    <h1>Upload Product Image </h1>
 
-    <form action="/api/products/test-upload" method="Post" enctype="multipart/form-data">
-    <input type="text" name="name" placeholder="Product Name" />
-    <br><br>
+// Logged-in user can update own profile
+router.put("/profile", authMiddleware, updateUserProfile);
 
-    <input type="number" name="price" placeholder="Product price "/>
-    <br><br>
+// Admin only
+router.get("/", adminMiddleware, getUsers);
 
-    <input type="file" name="image" />
-    <br><br>
-
-    <button type="submit">Submit</button>
-
-    </form>
-    `);
-});
-router.post("/test-upload", upload.single("image"),
-  (req, res) => {
-    console.log("Body", req.body);
-    console.log("File", req.file);
-    res.json({
-      message: "Product uploaded successfully",
-      file: req.file
-    });
-  }
-);
+// Public registration
 router.post(
   "/register",
   upload.fields([
@@ -58,8 +40,14 @@ router.post(
   ]),
   registerUser
 );
+
+// Public login
 router.post("/login", loginUser);
+
+// Logout
 router.post("/logout", logoutUser);
-router.delete("/:id", deleteUser);
+
+// Admin only
+router.delete("/:id", adminMiddleware, deleteUser);
 
 export default router;

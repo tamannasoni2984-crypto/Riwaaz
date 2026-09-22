@@ -1,13 +1,19 @@
 import Product from "../models/product.js";
 
-// GET all products
+// GET all products with dynamic search, filter, and sorting
 export const getProducts = async (req, res) => {
   try {
-    const { category, search, sort, isFeatured, isNew } = req.query;
+    const { category, search, sort, isFeatured, isNew, minPrice, maxPrice } = req.query;
     let query = { isActive: true };
 
     if (category && category !== "All") {
-      query.category = new RegExp(`^${category}$`, "i");
+      const cleanCat = category.replace(/s$/, ""); // singular/plural tolerance
+      query.$or = [
+        { category: new RegExp(`^${category}$`, "i") },
+        { category: new RegExp(cleanCat, "i") },
+        { subCategory: new RegExp(`^${category}$`, "i") },
+        { subCategory: new RegExp(cleanCat, "i") },
+      ];
     }
 
     if (isFeatured !== undefined) {
@@ -18,11 +24,18 @@ export const getProducts = async (req, res) => {
       query.isNew = isNew === "true";
     }
 
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = Number(minPrice);
+      if (maxPrice) query.price.$lte = Number(maxPrice);
+    }
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
         { category: { $regex: search, $options: "i" } },
+        { subCategory: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -34,6 +47,8 @@ export const getProducts = async (req, res) => {
       productQuery = productQuery.sort({ price: -1 });
     } else if (sort === "rating") {
       productQuery = productQuery.sort({ rating: -1 });
+    } else if (sort === "name-asc") {
+      productQuery = productQuery.sort({ name: 1 });
     } else {
       productQuery = productQuery.sort({ createdAt: -1 });
     }
@@ -44,6 +59,34 @@ export const getProducts = async (req, res) => {
       success: true,
       count: products.length,
       data: products,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// GET unique categories with item counts
+export const getCategories = async (req, res) => {
+  try {
+    const products = await Product.find({ isActive: true });
+    const categoryCounts = {};
+
+    products.forEach((p) => {
+      const cat = p.category || "Jewellery";
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    });
+
+    const categoryList = Object.keys(categoryCounts).map((cat) => ({
+      name: cat,
+      count: categoryCounts[cat],
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: categoryList,
     });
   } catch (error) {
     res.status(500).json({
@@ -79,7 +122,19 @@ export const getProductById = async (req, res) => {
 // CREATE new product
 export const createProduct = async (req, res) => {
   try {
-    const { name, category, subCategory, price, rating, isNew, isFeatured, description, stock } = req.body;
+    const {
+      name,
+      category,
+      subCategory,
+      price,
+      rating,
+      isNew,
+      isFeatured,
+      description,
+      stock,
+      metal,
+      diamondClarity,
+    } = req.body;
 
     let image = "/images/ring.png";
     if (req.file) {
@@ -97,8 +152,12 @@ export const createProduct = async (req, res) => {
       image,
       isNew: isNew === "true" || isNew === true,
       isFeatured: isFeatured === "true" || isFeatured === true,
-      description: description || "Exquisite handcrafted fine jewelry piece with premium craftsmanship.",
+      description:
+        description ||
+        "Exquisite handcrafted fine jewelry piece with premium craftsmanship.",
       stock: stock ? Number(stock) : 20,
+      metal: metal || "18K Hallmarked Gold",
+      diamondClarity: diamondClarity || "VVS1 / EF Color",
     });
 
     res.status(201).json({
@@ -121,6 +180,13 @@ export const updateProduct = async (req, res) => {
 
     if (req.file) {
       updateData.image = `/uploads/${req.file.filename}`;
+    }
+
+    if (updateData.price !== undefined) {
+      updateData.price = Number(updateData.price);
+    }
+    if (updateData.stock !== undefined) {
+      updateData.stock = Number(updateData.stock);
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -163,6 +229,55 @@ export const deleteProduct = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Product deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ADD review to product
+export const addProductReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user, rating, comment } = req.body;
+
+    if (!rating || !comment) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide both a star rating and a review comment.",
+      });
+    }
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    const newReview = {
+      user: user || "Valued Connoisseur",
+      rating: Number(rating),
+      comment: comment.trim(),
+      createdAt: new Date(),
+    };
+
+    product.reviews.unshift(newReview);
+
+    // Recalculate average rating
+    const totalRating = product.reviews.reduce((acc, r) => acc + r.rating, 0);
+    product.rating = Number((totalRating / product.reviews.length).toFixed(1));
+
+    await product.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Review added successfully!",
+      data: product,
     });
   } catch (error) {
     res.status(500).json({

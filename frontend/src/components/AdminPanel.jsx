@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useProducts } from "../context/ProductContext.jsx";
+import { useOrders } from "../context/OrderContext.jsx";
 import "./AdminPanel.css";
 
 const STANDARD_CATEGORIES = [
@@ -18,30 +19,48 @@ const STANDARD_CATEGORIES = [
 
 function AdminPanel() {
   const navigate = useNavigate();
-  const { products, addProduct, updateProduct, deleteProduct, loading } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { orders, updateOrderStatus } = useOrders();
 
   const [adminUser] = useState(() => {
-    const sessionData = sessionStorage.getItem("riwaaz_admin");
-    return sessionData ? JSON.parse(sessionData) : { name: "Admin", email: "admin@riwaaz.com", role: "Super Admin" };
+    try {
+      const sessionData = sessionStorage.getItem("riwaaz_admin");
+      return sessionData ? JSON.parse(sessionData) : null;
+    } catch {
+      return null;
+    }
   });
 
+  useEffect(() => {
+    if (!adminUser) {
+      navigate("/admin-login", {
+        replace: true,
+        state: { error: "Please log in with admin credentials to access the Admin Panel." },
+      });
+    }
+  }, [adminUser, navigate]);
+
   const [activeTab, setActiveTab] = useState(() => {
-    return sessionStorage.getItem("riwaaz_admin_tab") || "products";
+    return sessionStorage.getItem("riwaaz_admin_tab") || "orders";
   });
   const [toastMessage, setToastMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("All");
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     sessionStorage.setItem("riwaaz_admin_tab", tab);
   };
 
-
   // Modal State for Adding / Editing Product
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -63,13 +82,53 @@ function AdminPanel() {
   };
 
   const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
     sessionStorage.removeItem("riwaaz_admin");
-    navigate("/admin-login");
+    sessionStorage.removeItem("riwaaz_admin_tab");
+    localStorage.removeItem("riwaaz_admin");
+    setShowLogoutModal(false);
+    navigate("/admin-login", { state: { info: "Admin session ended securely." } });
+  };
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      let reason = "";
+      if (newStatus === "Cancelled") {
+        const inputReason = window.prompt("Enter cancellation reason (optional):", "Cancelled by Administrator");
+        if (inputReason === null) {
+          return; // user pressed cancel on prompt
+        }
+        reason = inputReason.trim() || "Cancelled by Administrator";
+      }
+      await updateOrderStatus(orderId, newStatus, reason);
+      showToast(`Order status updated to ${newStatus}`);
+    } catch (err) {
+      showToast(err.message || "Failed to update order status");
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+
+  const handleClearFile = () => {
+    setImageFile(null);
+    setImagePreview(formData.image || "/images/ring.png");
   };
 
   const handleOpenAdd = () => {
     setEditingProduct(null);
     setIsCustomCategory(false);
+    setImageFile(null);
+    setImagePreview("/images/ring.png");
     setFormData({
       name: "",
       category: "Rings",
@@ -90,11 +149,13 @@ function AdminPanel() {
     setEditingProduct(prod);
     const isStandard = STANDARD_CATEGORIES.includes(prod.category);
     setIsCustomCategory(!isStandard);
+    setImageFile(null);
+    setImagePreview(prod.image || "/images/ring.png");
 
     setFormData({
       name: prod.name || "",
       category: isStandard ? prod.category : "Custom",
-      customCategory: isStandard ? "" : (prod.category || ""),
+      customCategory: isStandard ? "" : prod.category || "",
       subCategory: prod.subCategory || "Jewellery",
       price: prod.price || "",
       rating: prod.rating || 4.8,
@@ -109,7 +170,7 @@ function AdminPanel() {
 
   const handleDeleteProduct = async (prod) => {
     const id = prod._id || prod.id;
-    if (window.confirm(`Are you sure you want to remove "${prod.name}" from the vault?`)) {
+    if (window.confirm(`Are you sure you want to remove "${prod.name}" from the catalog?`)) {
       await deleteProduct(id);
       showToast("Product deleted successfully from catalog!");
     }
@@ -123,37 +184,65 @@ function AdminPanel() {
     }
 
     const finalCategory = isCustomCategory
-      ? (formData.customCategory.trim() || "Jewellery")
+      ? formData.customCategory.trim() || "Jewellery"
       : formData.category;
 
-    const payload = {
-      name: formData.name.trim(),
-      category: finalCategory,
-      subCategory: formData.subCategory,
-      price: Number(formData.price),
-      rating: Number(formData.rating) || 4.8,
-      image: formData.image.trim() || "/images/ring.png",
-      isNew: Boolean(formData.isNew),
-      isFeatured: Boolean(formData.isFeatured),
-      description: formData.description.trim() || "Exquisite handcrafted fine jewelry piece with premium craftsmanship.",
-      stock: Number(formData.stock) || 20,
-    };
+    let payload;
+
+    if (imageFile) {
+      // Send directly as multipart/form-data for backend Multer upload
+      const fd = new FormData();
+      fd.append("name", formData.name.trim());
+      fd.append("category", finalCategory);
+      fd.append("subCategory", formData.subCategory);
+      fd.append("price", Number(formData.price));
+      fd.append("rating", Number(formData.rating) || 4.8);
+      fd.append("stock", Number(formData.stock) || 20);
+      fd.append("isNew", Boolean(formData.isNew));
+      fd.append("isFeatured", Boolean(formData.isFeatured));
+      fd.append(
+        "description",
+        formData.description.trim() ||
+          "Exquisite handcrafted fine jewelry piece with premium craftsmanship."
+      );
+      fd.append("image", imageFile);
+      payload = fd;
+    } else {
+      payload = {
+        name: formData.name.trim(),
+        category: finalCategory,
+        subCategory: formData.subCategory,
+        price: Number(formData.price),
+        rating: Number(formData.rating) || 4.8,
+        image: formData.image.trim() || "/images/ring.png",
+        isNew: Boolean(formData.isNew),
+        isFeatured: Boolean(formData.isFeatured),
+        description:
+          formData.description.trim() ||
+          "Exquisite handcrafted fine jewelry piece with premium craftsmanship.",
+        stock: Number(formData.stock) || 20,
+      };
+    }
 
     if (editingProduct) {
       const id = editingProduct._id || editingProduct.id;
       await updateProduct(id, payload);
-      showToast(`Updated "${payload.name}" successfully!`);
+      showToast(`Updated "${formData.name}" successfully!`);
     } else {
       await addProduct(payload);
-      showToast(`Added "${payload.name}" to inventory!`);
+      showToast(`Added "${formData.name}" to inventory!`);
     }
 
     setShowProductModal(false);
   };
 
   // Compute all unique categories dynamically
-  const availableCategories = Array.from(
-    new Set(["All", ...STANDARD_CATEGORIES, ...products.map((p) => p.category).filter(Boolean)])
+  const availableCategories = useMemo(
+    () =>
+      Array.from(
+        new Set(["All", ...STANDARD_CATEGORIES, ...products.map((p) => p.category).filter(Boolean)])
+      ),
+    [products]
   );
 
   const filteredProducts = products.filter((p) => {
@@ -171,7 +260,51 @@ function AdminPanel() {
     return matchesSearch && matchesCat;
   });
 
+  const filteredOrders = orders.filter((o) => {
+    const matchesStatus = orderStatusFilter === "All" || o.orderStatus === orderStatusFilter;
+    const matchesSearch =
+      !searchQuery.trim() ||
+      o.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.customer?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.customer?.phone?.includes(searchQuery);
+    return matchesStatus && matchesSearch;
+  });
+
+  // Analytics derivations
+  const totalGrossRevenue = orders.reduce((acc, o) => acc + (Number(o.grandTotal) || 0), 0);
   const totalVaultValue = products.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
+  const averageOrderValue = orders.length > 0 ? Math.round(totalGrossRevenue / orders.length) : 0;
+  const totalInMotion = orders.filter(
+    (o) => o.orderStatus !== "Delivered"
+  ).length;
+  // Derive unique clients
+  const uniqueClients = useMemo(() => {
+    const clientMap = new Map();
+    orders.forEach((o) => {
+      const email = o.customer?.email || o.customer?.phone || "Guest";
+      if (!clientMap.has(email)) {
+        clientMap.set(email, {
+          name: o.customer?.fullName || "Valued Client",
+          email: o.customer?.email || "—",
+          phone: o.customer?.phone || "—",
+          ordersCount: 1,
+          totalSpent: Number(o.grandTotal) || 0,
+          tier: (Number(o.grandTotal) || 0) > 50000 ? "Gold Royal VIP" : "Silver Member",
+          lastOrder: o.createdAt,
+        });
+      } else {
+        const client = clientMap.get(email);
+        client.ordersCount += 1;
+        client.totalSpent += Number(o.grandTotal) || 0;
+        if (client.totalSpent > 50000) client.tier = "Gold Royal VIP";
+      }
+    });
+    return Array.from(clientMap.values());
+  }, [orders]);
+
+  if (!adminUser) {
+    return null;
+  }
 
   return (
     <div className="admin-panel-root">
@@ -201,7 +334,7 @@ function AdminPanel() {
           </select>
           <input
             type="text"
-            placeholder="Search vault, inventory, serials..."
+            placeholder="Search vault, orders, clients..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -209,13 +342,14 @@ function AdminPanel() {
         </div>
 
         <div className="admin-top-right">
+          <Link to="/" style={{ color: "#d4af37", textDecoration: "none", fontSize: "13px", fontWeight: "700" }}>
+            ← View Live Store
+          </Link>
           <div className="admin-profile-pill">
-            <div className="admin-avatar">
-              {adminUser?.name?.charAt(0) || "A"}
-            </div>
+            <div className="admin-avatar">{adminUser?.name?.charAt(0) || "A"}</div>
             <div className="admin-profile-info">
               <span className="admin-profile-name">{adminUser?.name || "Tamanna Soni"}</span>
-              <span className="admin-profile-role">Master Jeweler Admin</span>
+              <span className="admin-profile-role">Super Admin</span>
             </div>
           </div>
           <button className="admin-top-logout-btn" onClick={handleLogout}>
@@ -229,6 +363,14 @@ function AdminPanel() {
         {/* Sidebar */}
         <aside className="admin-sidebar">
           <nav className="sidebar-nav">
+            <button
+              className={`menu-item ${activeTab === "orders" ? "active" : ""}`}
+              onClick={() => handleTabChange("orders")}
+            >
+              <span className="menu-icon">📦</span>
+              <span className="menu-text">Live Orders</span>
+              <span className="menu-badge">{orders.length}</span>
+            </button>
             <button
               className={`menu-item ${activeTab === "products" ? "active" : ""}`}
               onClick={() => handleTabChange("products")}
@@ -250,6 +392,7 @@ function AdminPanel() {
             >
               <span className="menu-icon">👥</span>
               <span className="menu-text">Clients & VIPs</span>
+              <span className="menu-badge">{uniqueClients.length}</span>
             </button>
           </nav>
           <div className="sidebar-footer">
@@ -267,6 +410,16 @@ function AdminPanel() {
           <div className="metrics-cards-row">
             <div className="metric-card">
               <div className="metric-header">
+                <span>Gross Revenue</span>
+                <div className="metric-icon emerald">₹</div>
+              </div>
+              <div className="metric-value">
+                ₹{totalGrossRevenue.toLocaleString("en-IN")}
+              </div>
+              <div className="metric-sub">{orders.length} Orders Processed</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-header">
                 <span>Vault Masterpieces</span>
                 <div className="metric-icon gold">💎</div>
               </div>
@@ -275,33 +428,142 @@ function AdminPanel() {
             </div>
             <div className="metric-card">
               <div className="metric-header">
-                <span>Gross Value</span>
-                <div className="metric-icon emerald">₹</div>
+                <span>Avg Order Value</span>
+                <div className="metric-icon blue">💰</div>
               </div>
-              <div className="metric-value">
-                ₹{(totalVaultValue / 1000).toLocaleString("en-IN", { maximumFractionDigits: 1 })}k
-              </div>
-              <div className="metric-sub">Catalog Valuation</div>
+              <div className="metric-value">₹{averageOrderValue.toLocaleString("en-IN")}</div>
+              <div className="metric-sub">Across All Customer Tiers</div>
             </div>
             <div className="metric-card">
               <div className="metric-header">
-                <span>Categories Active</span>
-                <div className="metric-icon blue">🏷️</div>
+                <span>Registered VIPs</span>
+                <div className="metric-icon purple">👑</div>
               </div>
-              <div className="metric-value">{availableCategories.length - 1}</div>
-              <div className="metric-sub">Synced Across Shop</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-header">
-                <span>Average Rating</span>
-                <div className="metric-icon purple">★</div>
-              </div>
-              <div className="metric-value">4.92</div>
-              <div className="metric-sub">Customer Satisfaction</div>
+              <div className="metric-value">{uniqueClients.length || 2}</div>
+              <div className="metric-sub">Active Customer Base</div>
             </div>
           </div>
 
-          {/* Products Panel */}
+          {/* TAB 1: LIVE ORDERS MANAGER */}
+          {activeTab === "orders" && (
+            <div className="view-panel">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <h2 style={{ fontSize: "1.3rem", fontWeight: "700" }}>Live Customer Orders Management</h2>
+                  <p style={{ color: "#9ca3af", fontSize: "0.85rem", marginTop: "2px" }}>
+                    Manage fulfillment, tracking, and order statuses in real-time.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <span style={{ fontSize: "13px", color: "#9ca3af" }}>Filter Status:</span>
+                  <select
+                    value={orderStatusFilter}
+                    onChange={(e) => setOrderStatusFilter(e.target.value)}
+                    style={{ background: "#1f2937", border: "1px solid #374151", color: "#fff", padding: "6px 12px", borderRadius: "8px", fontSize: "13px" }}
+                  >
+                    <option value="All">All Statuses ({orders.length})</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ background: "#111827", borderRadius: "12px", border: "1px solid #1f2937", overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #1f2937", color: "#9ca3af" }}>
+                      <th style={{ padding: "12px 16px" }}>Order ID</th>
+                      <th style={{ padding: "12px 16px" }}>Customer</th>
+                      <th style={{ padding: "12px 16px" }}>Items Snapshot</th>
+                      <th style={{ padding: "12px 16px" }}>Grand Total</th>
+                      <th style={{ padding: "12px 16px" }}>Payment</th>
+                      <th style={{ padding: "12px 16px" }}>Fulfillment Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map((ord) => (
+                      <tr key={ord.orderId || ord._id} style={{ borderBottom: "1px solid #1f2937" }}>
+                        <td style={{ padding: "12px 16px", fontWeight: "700", color: "#38bdf8" }}>
+                          #{ord.orderId}
+                          {ord.trackingNumber && <div style={{ fontSize: "11px", color: "#9ca3af" }}>{ord.trackingNumber}</div>}
+                          {ord.orderStatus === "Cancelled" && (
+                            <div style={{ fontSize: "11px", color: "#f87171", marginTop: "4px", background: "rgba(239, 68, 68, 0.1)", padding: "3px 6px", borderRadius: "4px" }}>
+                              <strong>Reason:</strong> {ord.cancellationReason || "Cancelled"}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <strong>{ord.customer?.fullName}</strong>
+                          <div style={{ fontSize: "11px", color: "#9ca3af" }}>{ord.shippingAddress?.city}, {ord.shippingAddress?.pincode}</div>
+                          <div style={{ fontSize: "11px", color: "#6b7280" }}>{ord.customer?.phone}</div>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          {ord.items?.map((item, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", margin: "3px 0" }}>
+                              <img
+                                src={item.image || "/images/ring.png"}
+                                alt={item.name}
+                                style={{ width: "24px", height: "24px", borderRadius: "4px", objectFit: "contain", background: "#1f2937" }}
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = "/images/ring.png";
+                                }}
+                              />
+                              <span style={{ fontSize: "12px" }}>{item.quantity}× {item.name}</span>
+                            </div>
+                          ))}
+                        </td>
+                        <td style={{ padding: "12px 16px", fontWeight: "800", color: "#ffd700" }}>
+                          ₹{Number(ord.grandTotal)?.toLocaleString("en-IN")}
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <span style={{ background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", padding: "3px 8px", borderRadius: "10px", fontSize: "11px" }}>
+                            {ord.paymentMethod?.toUpperCase()} ({ord.paymentStatus})
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <select
+                            value={ord.orderStatus || "Pending"}
+                            onChange={(e) => handleStatusChange(ord._id, e.target.value)}
+                            style={{
+                              background:
+                                ord.orderStatus === "Delivered"
+                                  ? "#065f46"
+                                  : ord.orderStatus === "Shipped"
+                                    ? "#1e40af"
+                                    : ord.orderStatus === "Cancelled"
+                                      ? "#991b1b"
+                                      : ord.orderStatus === "Processing"
+                                        ? "#5b21b6"
+                                        : "#78350f",
+                              color: "#fff",
+                              border: "none",
+                              padding: "6px 10px",
+                              borderRadius: "6px",
+                              fontWeight: "700",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: PRODUCTS VAULT */}
           {activeTab === "products" && (
             <div className="view-panel">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -339,7 +601,7 @@ function AdminPanel() {
                       <th style={{ padding: "12px 16px" }}>Category</th>
                       <th style={{ padding: "12px 16px" }}>Sub-Category</th>
                       <th style={{ padding: "12px 16px" }}>Price</th>
-                      <th style={{ padding: "12px 16px" }}>Rating</th>
+                      <th style={{ padding: "12px 16px" }}>Stock</th>
                       <th style={{ padding: "12px 16px" }}>Actions</th>
                     </tr>
                   </thead>
@@ -369,7 +631,9 @@ function AdminPanel() {
                           <td style={{ padding: "10px 16px", fontWeight: "700", color: "#ffd700" }}>
                             ₹{Number(prod.price)?.toLocaleString("en-IN")}
                           </td>
-                          <td style={{ padding: "10px 16px" }}>★ {prod.rating || 4.8}</td>
+                          <td style={{ padding: "10px 16px", color: prod.stock > 0 ? "#34d399" : "#f87171" }}>
+                            {prod.stock || 20} units
+                          </td>
                           <td style={{ padding: "10px 16px" }}>
                             <button
                               onClick={() => handleOpenEdit(prod)}
@@ -393,22 +657,63 @@ function AdminPanel() {
             </div>
           )}
 
-          {/* Users Panel */}
+          {/* TAB 3: CLIENTS & VIPS */}
           {activeTab === "users" && (
             <div className="view-panel">
-              <h2 style={{ fontSize: "1.3rem", fontWeight: "700", marginBottom: "1rem" }}>VIP Customers & Concierge</h2>
-              <div style={{ background: "#111827", borderRadius: "12px", border: "1px solid #1f2937", padding: "20px" }}>
-                <p style={{ color: "#9ca3af" }}>Customer relationship details, membership tiers and order histories.</p>
+              <h2 style={{ fontSize: "1.3rem", fontWeight: "700", marginBottom: "1rem" }}>VIP Clients & Customer Registry</h2>
+              <div style={{ background: "#111827", borderRadius: "12px", border: "1px solid #1f2937", overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #1f2937", color: "#9ca3af" }}>
+                      <th style={{ padding: "12px 16px" }}>Client Name</th>
+                      <th style={{ padding: "12px 16px" }}>Email / Contact</th>
+                      <th style={{ padding: "12px 16px" }}>Membership Tier</th>
+                      <th style={{ padding: "12px 16px" }}>Total Orders</th>
+                      <th style={{ padding: "12px 16px" }}>Lifetime Spent</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {uniqueClients.map((client, idx) => (
+                      <tr key={idx} style={{ borderBottom: "1px solid #1f2937" }}>
+                        <td style={{ padding: "12px 16px", fontWeight: "700" }}>{client.name}</td>
+                        <td style={{ padding: "12px 16px", color: "#9ca3af" }}>
+                          <div>{client.email}</div>
+                          <div style={{ fontSize: "11px" }}>{client.phone}</div>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <span style={{ background: "rgba(212, 175, 55, 0.15)", color: "#ffd700", padding: "4px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: "700" }}>
+                            👑 {client.tier}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>{client.ordersCount} Orders</td>
+                        <td style={{ padding: "12px 16px", fontWeight: "700", color: "#34d399" }}>
+                          ₹{client.totalSpent.toLocaleString("en-IN")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
-          {/* Analytics Overview */}
+          {/* TAB 4: ANALYTICS OVERVIEW */}
           {activeTab === "overview" && (
             <div className="view-panel">
-              <h2 style={{ fontSize: "1.3rem", fontWeight: "700", marginBottom: "1rem" }}>Sales & Traffic Overview</h2>
-              <div style={{ background: "#111827", borderRadius: "12px", border: "1px solid #1f2937", padding: "20px" }}>
-                <p style={{ color: "#9ca3af" }}>Real-time sales velocity, top performing solitaire lines and region metrics.</p>
+              <h2 style={{ fontSize: "1.3rem", fontWeight: "700", marginBottom: "1rem" }}>Sales & Catalog Analytics</h2>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                <div style={{ background: "#111827", borderRadius: "12px", border: "1px solid #1f2937", padding: "20px" }}>
+                  <h3 style={{ fontSize: "16px", marginBottom: "12px", color: "#ffd700" }}>Revenue Realization</h3>
+                  <p style={{ color: "#9ca3af", fontSize: "14px" }}>Total Gross Realized: <strong>₹{totalGrossRevenue.toLocaleString("en-IN")}</strong></p>
+                  <p style={{ color: "#9ca3af", fontSize: "14px" }}>Catalog Capital Value: <strong>₹{totalVaultValue.toLocaleString("en-IN")}</strong></p>
+                  <p style={{ color: "#9ca3af", fontSize: "14px" }}>Average Order Cart: <strong>₹{averageOrderValue.toLocaleString("en-IN")}</strong></p>
+                </div>
+                <div style={{ background: "#111827", borderRadius: "12px", border: "1px solid #1f2937", padding: "20px" }}>
+                  <h3 style={{ fontSize: "16px", marginBottom: "12px", color: "#38bdf8" }}>Inventory Breakdown</h3>
+                  <p style={{ color: "#9ca3af", fontSize: "14px" }}>Active Masterpieces: <strong>{products.length}</strong></p>
+                  <p style={{ color: "#9ca3af", fontSize: "14px" }}>Active Categories: <strong>{availableCategories.length - 1}</strong></p>
+                  <p style={{ color: "#9ca3af", fontSize: "14px" }}>Orders In Motion: <strong>{orders.filter((o) => o.status !== "Delivered").length}</strong></p>
+                </div>
               </div>
             </div>
           )}
@@ -511,15 +816,68 @@ function AdminPanel() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", color: "#9ca3af", marginBottom: "4px" }}>Image Path / URL</label>
-                <input
-                  type="text"
-                  placeholder="/images/ring.png or URL"
-                  value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", background: "#1f2937", border: "1px solid #374151", color: "#fff" }}
-                />
+              {/* Media Upload Portal */}
+              <div className="image-upload-portal">
+                <label className="portal-label">Product Media & Visual Asset</label>
+                <div className="portal-container">
+                  <div className="portal-preview-box">
+                    <img
+                      src={imagePreview || formData.image || "/images/ring.png"}
+                      alt="Product Preview"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/images/ring.png";
+                      }}
+                    />
+                    {imageFile && <span className="portal-file-badge">NEW FILE</span>}
+                  </div>
+
+                  <div className="portal-controls">
+                    <div className="file-input-wrapper">
+                      <label className="btn-file-upload">
+                        📁 Upload Media File
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          style={{ display: "none" }}
+                        />
+                      </label>
+
+                      {imageFile ? (
+                        <span className="selected-filename">
+                          ✓ {imageFile.name}
+                          <button
+                            type="button"
+                            className="btn-clear-file"
+                            onClick={handleClearFile}
+                            title="Remove selected file"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="no-file-text">Directly upload high-res image (PNG, JPG, WebP)</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="or-divider">Or enter public image URL / asset path:</span>
+                      <input
+                        type="text"
+                        placeholder="/images/ring.png or https://..."
+                        value={formData.image}
+                        onChange={(e) => {
+                          setFormData({ ...formData, image: e.target.value });
+                          if (!imageFile) {
+                            setImagePreview(e.target.value);
+                          }
+                        }}
+                        className="portal-url-input"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: "20px", marginTop: "4px" }}>
@@ -568,6 +926,38 @@ function AdminPanel() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN LOGOUT CONFIRMATION MODAL */}
+      {showLogoutModal && (
+        <div className="admin-logout-modal-overlay">
+          <div className="admin-logout-modal-card">
+            <div className="logout-modal-header">
+              <div className="logout-modal-icon">🚪</div>
+              <h3>Confirm Admin Sign Out</h3>
+            </div>
+            <p className="logout-modal-text">
+              Are you sure you want to end your administrative session? You will need to enter your super admin credentials to regain access.
+            </p>
+            <div className="logout-modal-actions">
+              <button
+                type="button"
+                className="btn-modal-cancel"
+                onClick={() => setShowLogoutModal(false)}
+              >
+                Stay Logged In
+              </button>
+              <button
+                type="button"
+                className="btn-modal-confirm"
+                onClick={confirmLogout}
+                style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700", padding: "11px 18px", cursor: "pointer" }}
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       )}

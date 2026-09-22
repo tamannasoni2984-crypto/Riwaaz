@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
-import { Link } from "react-router-dom";
-import CheckoutModal from "../components/CheckoutModal";
+import { Link, useNavigate } from "react-router-dom";
 import ConfirmModal from "../components/ConfirmModal";
 import { useToast } from "../context/ToastContext";
 import "./Cart.css";
@@ -15,6 +14,8 @@ function Cart() {
     removeFromCart,
   } = useCart();
 
+  const navigate = useNavigate();
+
   const { showToast } = useToast?.() || {};
 
   // State for shipping selection
@@ -25,8 +26,6 @@ function Cart() {
   const [discount, setDiscount] = useState(0);
   const [appliedCode, setAppliedCode] = useState("");
 
-  // State for Checkout Modal
-  const [showCheckout, setShowCheckout] = useState(false);
 
   // State for Removal Confirmation Modal
   const [itemToRemove, setItemToRemove] = useState(null);
@@ -103,7 +102,14 @@ function Cart() {
                 <div className="cart-item-row" key={item.id}>
                   {/* Thumbnail */}
                   <div className="cart-item-image-wrapper">
-                    <img src={item.image} alt={item.name} />
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/images/ring.png";
+                      }}
+                    />
                   </div>
 
                   {/* Title & Category */}
@@ -238,7 +244,15 @@ function Cart() {
 
             <button
               className="summary-checkout-btn"
-              onClick={() => setShowCheckout(true)}
+              onClick={() => navigate("/checkout", {
+                state: {
+                  shippingCost,
+                  discount,
+                  appliedCode,
+                  grandTotal,
+                },
+              })
+              }
             >
               CHECKOUT
             </button>
@@ -246,13 +260,6 @@ function Cart() {
         </div>
       </div>
 
-      {/* Checkout Modal */}
-      <CheckoutModal
-        isOpen={showCheckout}
-        onClose={() => setShowCheckout(false)}
-      />
-
-      {/* Removal Confirmation Modal */}
       <ConfirmModal
         isOpen={!!itemToRemove}
         title="Remove Item from Cart?"

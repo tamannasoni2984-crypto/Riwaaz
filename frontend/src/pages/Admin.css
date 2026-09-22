@@ -614,27 +614,27 @@
   gap: 1.1rem;
 }
 
-.form-row {
+.admin-container .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
-.form-group {
+.admin-container .form-group {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
-.form-group label {
+.admin-container .form-group label {
   font-size: 0.85rem;
   font-weight: 600;
   color: #334155;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.admin-container .form-group input,
+.admin-container .form-group select,
+.admin-container .form-group textarea {
   padding: 0.7rem 0.9rem;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
@@ -642,9 +642,9 @@
   outline: none;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.admin-container .form-group input:focus,
+.admin-container .form-group select:focus,
+.admin-container .form-group textarea:focus {
   border-color: #d4af37;
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
 }

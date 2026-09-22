@@ -22,11 +22,27 @@ const userSchema = new mongoose.Schema(
         },
 
         address: {
-            type: String,
-            default: "",
-            trim: true,
+            street: {
+                type: String,
+                default: "",
+                trim: true,
+            },
+            city: {
+                type: String,
+                default: "",
+                trim: true,
+            },
+            state: {
+                type: String,
+                default: "",
+                trim: true,
+            },
+            pincode: {
+                type: String,
+                default: "",
+                trim: true,
+            },
         },
-
         email: {
             type: String,
             required: true,
@@ -39,6 +55,12 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
             minlength: 6,
+        },
+
+        phone: {
+            type: String,
+            default: "",
+            trim: true,
         },
 
         isActive: {
@@ -72,6 +94,6 @@ userSchema.pre("save", async function () {
     this.password = await bcrypt.hash(this.password, salt);
 });
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;

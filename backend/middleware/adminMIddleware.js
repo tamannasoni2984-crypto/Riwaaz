@@ -2,36 +2,35 @@ import jwt from "jsonwebtoken";
 
 const adminMiddleware = (req, res, next) => {
     try {
-        // 1. Get token from cookie
-        const token = req.cookies.token;
+        const token =
+            req.cookies?.token ||
+            (req.headers?.authorization && req.headers.authorization.startsWith("Bearer ")
+                ? req.headers.authorization.split(" ")[1]
+                : null);
 
         if (!token) {
             return res.status(401).json({
                 success: false,
-                message: "Please login first",
+                message: "Please login as admin first",
             });
         }
 
-        // 2. Verify JWT
         const decoded = jwt.verify(
             token,
-            process.env.JWT_SECRET
+            process.env.JWT_SECRET || "riwaaz_secret_key_123"
         );
 
-        // 3. Check admin role
         if (decoded.role !== "admin") {
             return res.status(403).json({
                 success: false,
-                message: "Access denied. Admin only.",
+                message: "Access denied. Admin privileges required.",
             });
         }
 
-        // 4. Save admin information
         req.admin = decoded;
+        req.user = decoded;
 
-        // 5. Continue to the next middleware/controller
         next();
-
     } catch (error) {
         return res.status(401).json({
             success: false,

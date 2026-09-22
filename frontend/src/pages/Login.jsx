@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useOrders } from "../context/OrderContext";
+import { Link } from "react-router-dom";
 import "./Login.css";
 
 function Login() {
@@ -16,28 +18,33 @@ function Login() {
     setDefaultAddress,
   } = useAuth();
 
+  const { getUserOrders, cancelOrder } = useOrders();
+
   // Mode: "login" | "signup"
   const [authMode, setAuthMode] = useState("login");
 
   // Logged-in Account Sub-tab: "addresses" | "profile" | "orders"
-  const [accountTab, setAccountTab] = useState("addresses");
+  const [accountTab, setAccountTab] = useState("orders");
 
   // Auth Form State
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
   const [signupName, setSignupName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
 
   const [authError, setAuthError] = useState("");
   const [authSuccess, setAuthSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Address Form Modal / Drawer State
+  // Address Form State
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [editingAddressId, setEditingAddressId] = useState(null); // null if adding new
+  const [editingAddressId, setEditingAddressId] = useState(null);
 
   const [addrLabel, setAddrLabel] = useState("Home");
   const [addrFullName, setAddrFullName] = useState("");
@@ -53,18 +60,81 @@ function Login() {
   const [editPhone, setEditPhone] = useState(user ? user.phone : "");
   const [profileMsg, setProfileMsg] = useState("");
 
+  const [userOrders, setUserOrders] = useState([]);
+
+  // Cancel Order Modal State
+  const [cancelModalOrder, setCancelModalOrder] = useState(null);
+  const [cancelReasonPreset, setCancelReasonPreset] = useState("Changed my mind");
+  const [customCancelReason, setCustomCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Logout Confirmation Modal State
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      const orders = await getUserOrders();
+      setUserOrders(Array.isArray(orders) ? orders : []);
+    };
+
+    loadOrders();
+  }, [getUserOrders]);
+
+  const handleOpenCancelModal = (order) => {
+    setCancelModalOrder(order);
+    setCancelReasonPreset("Changed my mind");
+    setCustomCancelReason("");
+    setCancelError("");
+  };
+
+  const handleConfirmCancelOrder = async (e) => {
+    e.preventDefault();
+    if (!cancelModalOrder) return;
+
+    const finalReason =
+      cancelReasonPreset === "Other"
+        ? (customCancelReason.trim() || "Customer requested cancellation")
+        : (customCancelReason.trim()
+            ? `${cancelReasonPreset}: ${customCancelReason.trim()}`
+            : cancelReasonPreset);
+
+    setIsCancelling(true);
+    setCancelError("");
+
+    try {
+      const orderIdentifier = cancelModalOrder._id || cancelModalOrder.orderId;
+      const updated = await cancelOrder(orderIdentifier, finalReason);
+
+      setUserOrders((prev) =>
+        prev.map((o) =>
+          o._id === updated._id || o.orderId === updated.orderId ? updated : o
+        )
+      );
+
+      setCancelModalOrder(null);
+    } catch (err) {
+      setCancelError(err.message || "Failed to cancel order.");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   // Handle Login Submit
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setAuthError("");
     setAuthSuccess("");
+    setIsSubmitting(true);
 
     if (!loginEmail || !loginPassword) {
       setAuthError("Please enter both email and password.");
+      setIsSubmitting(false);
       return;
     }
 
-    const res = login(loginEmail, loginPassword);
+    const res = await login(loginEmail, loginPassword);
+    setIsSubmitting(false);
     if (res.success) {
       setAuthSuccess(res.message);
     } else {
@@ -73,22 +143,26 @@ function Login() {
   };
 
   // Handle Signup Submit
-  const handleSignupSubmit = (e) => {
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setAuthError("");
     setAuthSuccess("");
+    setIsSubmitting(true);
 
     if (!signupName || !signupEmail || !signupPassword) {
       setAuthError("Please fill in all mandatory fields.");
+      setIsSubmitting(false);
       return;
     }
 
     if (signupPassword !== signupConfirmPassword) {
       setAuthError("Passwords do not match.");
+      setIsSubmitting(false);
       return;
     }
 
-    const res = signup(signupName, signupEmail, signupPhone, signupPassword);
+    const res = await signup(signupName, signupEmail, signupPhone, signupPassword);
+    setIsSubmitting(false);
     if (res.success) {
       setAuthSuccess(res.message);
     } else {
@@ -97,11 +171,13 @@ function Login() {
   };
 
   // Quick Demo Login
-  const handleDemoLogin = () => {
-    login("tamanna.soni@riwaaz.com", "demo12345");
+  const handleDemoLogin = async () => {
+    setIsSubmitting(true);
+    await login("tamanna.soni@riwaaz.com", "demo12345");
+    setIsSubmitting(false);
   };
 
-  // Open Address Form for Add or Edit
+  // Open Address Form
   const openAddressModal = (addrToEdit = null) => {
     if (addrToEdit) {
       setEditingAddressId(addrToEdit.id);
@@ -127,7 +203,7 @@ function Login() {
     setShowAddressForm(true);
   };
 
-  // Save Address (Create or Edit)
+  // Save Address
   const handleSaveAddress = (e) => {
     e.preventDefault();
     if (!addrFullName || !addrStreet || !addrCity || !addrPincode) {
@@ -155,7 +231,7 @@ function Login() {
     setShowAddressForm(false);
   };
 
-  // Handle Profile Update Submit
+  // Handle Profile Update
   const handleSaveProfile = (e) => {
     e.preventDefault();
     updateProfile({ name: editName, phone: editPhone });
@@ -163,21 +239,16 @@ function Login() {
     setTimeout(() => setProfileMsg(""), 3000);
   };
 
-  // -------------------------------------------------------------
-  // IF USER IS NOT LOGGED IN -> RENDER LOGIN / SIGNUP FORMS
-  // -------------------------------------------------------------
   if (!user) {
     return (
       <main className="auth-page-wrapper">
         <div className="auth-card-container">
-          {/* Header Branding */}
           <div className="auth-brand-header">
             <img src="/images/riwaaz-logo.svg" alt="RIWAAZ" className="auth-logo-icon" />
             <h2>RIWAAZ LUXURY</h2>
             <p>Sign in to manage your orders, saved addresses, and wishlist.</p>
           </div>
 
-          {/* Mode Switch Tabs */}
           <div className="auth-mode-tabs">
             <button
               className={`auth-tab-btn ${authMode === "login" ? "active" : ""}`}
@@ -201,11 +272,9 @@ function Login() {
             </button>
           </div>
 
-          {/* Alert Messages */}
           {authError && <div className="auth-alert error-alert">{authError}</div>}
           {authSuccess && <div className="auth-alert success-alert">{authSuccess}</div>}
 
-          {/* LOGIN FORM */}
           {authMode === "login" ? (
             <form onSubmit={handleLoginSubmit} className="auth-form">
               <div className="form-group">
@@ -220,27 +289,30 @@ function Login() {
               </div>
 
               <div className="form-group">
-                <label>Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  required
-                />
+                <div className="label-with-action">
+                  <label>Password</label>
+                </div>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showLoginPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    aria-label="Toggle password visibility"
+                  >
+                    {showLoginPassword ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
               </div>
 
-              <div className="form-options">
-                <label className="remember-me">
-                  <input type="checkbox" defaultChecked /> Remember Me
-                </label>
-                <button type="button" className="forgot-pass-btn">
-                  Forgot Password?
-                </button>
-              </div>
-
-              <button type="submit" className="auth-primary-btn">
-                Sign In to Account
+              <button type="submit" className="auth-primary-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Signing in..." : "Sign In to Account"}
               </button>
 
               <div className="demo-login-divider">
@@ -251,12 +323,12 @@ function Login() {
                 type="button"
                 className="demo-login-btn"
                 onClick={handleDemoLogin}
+                disabled={isSubmitting}
               >
-                ⚡ Instant Demo Sign-In
+                ⚡ Instant VIP Demo Sign-In
               </button>
             </form>
           ) : (
-            /* SIGN UP FORM */
             <form onSubmit={handleSignupSubmit} className="auth-form">
               <div className="form-group">
                 <label>Full Name</label>
@@ -292,28 +364,40 @@ function Login() {
 
               <div className="form-group">
                 <label>Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={signupPassword}
-                  onChange={(e) => setSignupPassword(e.target.value)}
-                  required
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    type={showSignupPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowSignupPassword(!showSignupPassword)}
+                    aria-label="Toggle password visibility"
+                  >
+                    {showSignupPassword ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
               </div>
 
               <div className="form-group">
                 <label>Confirm Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={signupConfirmPassword}
-                  onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                  required
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    type={showSignupPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={signupConfirmPassword}
+                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
-              <button type="submit" className="auth-primary-btn">
-                Create RIWAAZ Account
+              <button type="submit" className="auth-primary-btn" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create RIWAAZ Account"}
               </button>
             </form>
           )}
@@ -322,9 +406,6 @@ function Login() {
     );
   }
 
-  // -------------------------------------------------------------
-  // IF USER IS LOGGED IN -> RENDER FULL ACCOUNT DASHBOARD & ADDRESS MANAGER
-  // -------------------------------------------------------------
   return (
     <main className="account-dashboard-wrapper">
       <div className="dashboard-container">
@@ -340,7 +421,7 @@ function Login() {
             <span className="user-status-tag">✨ {user.memberStatus || "Gold VIP Member"}</span>
           </div>
 
-          <button onClick={logout} className="logout-btn">
+          <button onClick={() => setShowLogoutModal(true)} className="logout-btn">
             Sign Out
           </button>
         </div>
@@ -348,26 +429,174 @@ function Login() {
         {/* Account Sub-Navigation Tabs */}
         <div className="account-subtabs">
           <button
+            className={`subtab-btn ${accountTab === "orders" ? "active" : ""}`}
+            onClick={() => setAccountTab("orders")}
+          >
+            📦 My Orders ({userOrders.length})
+          </button>
+          <button
             className={`subtab-btn ${accountTab === "addresses" ? "active" : ""}`}
             onClick={() => setAccountTab("addresses")}
           >
-            📍 Saved Shipping Addresses ({addresses.length})
+            📍 Saved Addresses ({addresses.length})
           </button>
           <button
             className={`subtab-btn ${accountTab === "profile" ? "active" : ""}`}
             onClick={() => setAccountTab("profile")}
           >
-            👤 Edit Profile Details
-          </button>
-          <button
-            className={`subtab-btn ${accountTab === "orders" ? "active" : ""}`}
-            onClick={() => setAccountTab("orders")}
-          >
-            📦 My Orders
+            👤 Edit Profile
           </button>
         </div>
 
-        {/* TAB 1: SAVED ADDRESSES MANAGEMENT */}
+        {/* TAB 1: ORDER HISTORY */}
+        {accountTab === "orders" && (
+          <div className="orders-tab-content">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <div>
+                <h3>Your Royal Orders History</h3>
+                <p>Track your orders, delivery progress, and view purchase details.</p>
+              </div>
+              <Link to="/shop" style={{ color: "#b8860b", fontWeight: "700", textDecoration: "none", fontSize: "14px" }}>
+                + Explore More Jewels
+              </Link>
+            </div>
+
+            {userOrders.length === 0 ? (
+              <div style={{ background: "#fff", padding: "40px", borderRadius: "16px", textAlign: "center", border: "1px solid #eaeaea" }}>
+                <span style={{ fontSize: "40px" }}>🛍️</span>
+                <h4 style={{ marginTop: "12px", fontSize: "18px" }}>No orders placed yet</h4>
+                <p style={{ color: "#777", marginBottom: "20px" }}>Discover our exclusive signature jewelry and place your first royal order.</p>
+                <Link to="/shop" style={{ background: "#111", color: "#fff", padding: "10px 24px", borderRadius: "25px", textDecoration: "none", fontWeight: "700" }}>
+                  Browse Shop
+                </Link>
+              </div>
+            ) : (
+              <div className="order-history-list" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                {Array.isArray(userOrders) && userOrders.map((order) => {
+                  const isCancelled = order.orderStatus === "Cancelled";
+                  const isDelivered = order.orderStatus === "Delivered";
+                  const isShipped = order.orderStatus === "Shipped";
+                  const isProcessing = order.orderStatus === "Processing";
+                  const canCancel = order.orderStatus === "Pending" || order.orderStatus === "Processing";
+
+                  return (
+                    <div
+                      key={order.orderId || order._id}
+                      className="order-history-card"
+                      style={{ background: "#fff", borderRadius: "16px", padding: "24px", border: "1px solid #eaeaea", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}
+                    >
+                      <div className="order-header-row" style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f0f0f0", paddingBottom: "14px", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+                        <div>
+                          <span style={{ fontWeight: "800", fontSize: "16px", color: "#111" }}>
+                            Order #{order.orderId}
+                          </span>
+                          <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
+                            Placed on {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent"}
+                            {order.trackingNumber && ` • Tracking: ${order.trackingNumber}`}
+                          </div>
+                        </div>
+                        <div>
+                          <span
+                            style={{
+                              padding: "4px 12px",
+                              borderRadius: "15px",
+                              fontWeight: "700",
+                              fontSize: "12px",
+                              background: isDelivered
+                                ? "#d1fae5"
+                                : isShipped
+                                  ? "#dbeafe"
+                                  : isCancelled
+                                    ? "#fee2e2"
+                                    : isProcessing
+                                      ? "#ede9fe"
+                                      : "#fef3c7",
+                              color: isDelivered
+                                ? "#065f46"
+                                : isShipped
+                                  ? "#1e40af"
+                                  : isCancelled
+                                    ? "#991b1b"
+                                    : isProcessing
+                                      ? "#5b21b6"
+                                      : "#92400e",
+                            }}
+                          >
+                            ● {order.orderStatus}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Items in order */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+                        {order.items?.map((item, idx) => (
+                          <div key={idx} style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                            <img
+                              src={item.image || "/images/ring.png"}
+                              alt={item.name}
+                              style={{ width: "50px", height: "50px", objectFit: "contain", borderRadius: "8px", background: "#f9f9f9" }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/images/ring.png";
+                              }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <h5 style={{ margin: "0 0 2px", fontSize: "14px", color: "#111" }}>{item.name}</h5>
+                              <span style={{ fontSize: "12px", color: "#777" }}>
+                                Qty: {item.quantity} • ₹{Number(item.price)?.toLocaleString("en-IN")}
+                                {item.karat ? ` • ${item.karat}` : ""}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Cancellation Note if Cancelled */}
+                      {isCancelled && (
+                        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "10px 14px", marginBottom: "16px", fontSize: "13px", color: "#991b1b" }}>
+                          <div><strong>Cancellation Reason:</strong> {order.cancellationReason || "Cancelled by customer"}</div>
+                          {order.cancelledAt && (
+                            <div style={{ fontSize: "11px", color: "#b91c1c", marginTop: "4px" }}>
+                              Cancelled on {new Date(order.cancelledAt).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f0f0f0", paddingTop: "14px", fontSize: "14px", flexWrap: "wrap", gap: "10px" }}>
+                        <div>
+                          <span>Shipping to: </span>
+                          <strong style={{ color: "#333" }}>{order.shippingAddress?.city}, {order.shippingAddress?.pincode}</strong>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                          <div style={{ fontSize: "15px" }}>
+                            Grand Total: <strong style={{ color: "#b8860b", fontWeight: "900" }}>₹{Number(order.grandTotal)?.toLocaleString("en-IN")}</strong>
+                          </div>
+                          <Link
+                            to={`/orders/${order.orderId || order._id}`}
+                            style={{ padding: "6px 14px", borderRadius: "8px", background: "#f3f4f6", color: "#1f2937", textDecoration: "none", fontSize: "12px", fontWeight: "700", border: "1px solid #e5e7eb" }}
+                          >
+                            Details →
+                          </Link>
+                          {canCancel && (
+                            <button
+                              onClick={() => handleOpenCancelModal(order)}
+                              style={{ padding: "6px 14px", borderRadius: "8px", background: "#fff", color: "#dc2626", border: "1px solid #fca5a5", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+                            >
+                              Cancel Order
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: SAVED ADDRESSES */}
         {accountTab === "addresses" && (
           <div className="addresses-tab-content">
             <div className="address-section-top">
@@ -384,7 +613,6 @@ function Login() {
               </button>
             </div>
 
-            {/* List of Saved Addresses */}
             <div className="address-cards-grid">
               {addresses.map((addr) => (
                 <div
@@ -430,7 +658,6 @@ function Login() {
               ))}
             </div>
 
-            {/* ADDRESS ADD / EDIT FORM MODAL */}
             {showAddressForm && (
               <div className="modal-backdrop">
                 <div className="address-modal-container">
@@ -550,7 +777,7 @@ function Login() {
           </div>
         )}
 
-        {/* TAB 2: PROFILE DETAILS */}
+        {/* TAB 3: PROFILE */}
         {accountTab === "profile" && (
           <div className="profile-tab-content">
             <h3>Edit Account Details</h3>
@@ -589,34 +816,113 @@ function Login() {
           </div>
         )}
 
-        {/* TAB 3: ORDER HISTORY */}
-        {accountTab === "orders" && (
-          <div className="orders-tab-content">
-            <h3>Recent Order History</h3>
-            <div className="order-history-list">
-              <div className="order-history-card">
-                <div className="order-header-row">
-                  <div>
-                    <span className="order-id">Order #RW-2026-9842</span>
-                    <span className="order-date">Placed on Aug 24, 2026</span>
-                  </div>
-                  <span className="order-status-badge delivered">Delivered ✓</span>
+        {/* CANCEL ORDER MODAL */}
+        {cancelModalOrder && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999 }}>
+            <div style={{ maxWidth: "480px", width: "90%", background: "#fff", borderRadius: "18px", padding: "28px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h3 style={{ margin: 0, fontSize: "18px", color: "#111" }}>Cancel Order #{cancelModalOrder.orderId}</h3>
+                <button
+                  onClick={() => setCancelModalOrder(null)}
+                  style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#888" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px", lineHeight: "1.5" }}>
+                Please let us know why you wish to cancel this order. We continuously strive to improve our royal customer experience.
+              </p>
+
+              {cancelError && (
+                <div style={{ background: "#fee2e2", color: "#991b1b", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", marginBottom: "14px" }}>
+                  {cancelError}
+                </div>
+              )}
+
+              <form onSubmit={handleConfirmCancelOrder}>
+                <div className="form-group" style={{ marginBottom: "14px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "700", marginBottom: "6px", color: "#333" }}>Reason for cancellation</label>
+                  <select
+                    value={cancelReasonPreset}
+                    onChange={(e) => setCancelReasonPreset(e.target.value)}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", background: "#fff" }}
+                  >
+                    <option value="Changed my mind">Changed my mind</option>
+                    <option value="Found better price elsewhere">Found better price elsewhere</option>
+                    <option value="Ordered by mistake">Ordered by mistake</option>
+                    <option value="Incorrect shipping address or phone">Incorrect shipping address or phone</option>
+                    <option value="Delivery time is too long">Delivery time is too long</option>
+                    <option value="Want to change payment method">Want to change payment method</option>
+                    <option value="Other">Other (specify below)</option>
+                  </select>
                 </div>
 
-                <div className="order-items-preview">
-                  <div className="order-item-thumb">
-                    <img src="/images/ring-removebg-preview.png" alt="Solitaire Ring" />
-                    <div>
-                      <h5>Solitaire Diamond Ring</h5>
-                      <p>Qty: 1 • ₹14,999</p>
-                    </div>
-                  </div>
+                <div className="form-group" style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "700", marginBottom: "6px", color: "#333" }}>
+                    Additional Comments {cancelReasonPreset === "Other" ? "(Required)" : "(Optional)"}
+                  </label>
+                  <textarea
+                    rows="3"
+                    placeholder="Provide any additional details or feedback..."
+                    value={customCancelReason}
+                    onChange={(e) => setCustomCancelReason(e.target.value)}
+                    required={cancelReasonPreset === "Other"}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px", fontFamily: "inherit" }}
+                  />
                 </div>
 
-                <div className="order-footer-row">
-                  <p>Total Amount: <strong>₹14,999</strong></p>
-                  <button className="reorder-btn">View Invoice</button>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={() => setCancelModalOrder(null)}
+                    style={{ padding: "10px 18px", borderRadius: "8px", background: "#f3f4f6", color: "#4b5563", border: "none", fontWeight: "600", cursor: "pointer" }}
+                    disabled={isCancelling}
+                  >
+                    Keep Order
+                  </button>
+                  <button
+                    type="submit"
+                    style={{ padding: "10px 20px", borderRadius: "8px", background: "#dc2626", color: "#fff", border: "none", fontWeight: "700", cursor: "pointer" }}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                  </button>
                 </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* USER LOGOUT CONFIRMATION MODAL */}
+        {showLogoutModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999 }}>
+            <div style={{ background: "#fff", borderRadius: "18px", padding: "30px 24px", maxWidth: "400px", width: "90%", textAlign: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.25)" }}>
+              <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px", margin: "0 auto 16px" }}>
+                🚪
+              </div>
+              <h3 style={{ margin: "0 0 8px", fontSize: "20px", color: "#111", fontWeight: "800" }}>Sign Out Confirmation</h3>
+              <p style={{ margin: "0 0 24px", color: "#666", fontSize: "14px", lineHeight: "1.5" }}>
+                Are you sure you want to sign out from your Riwaaz account?
+              </p>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutModal(false)}
+                  style={{ flex: 1, padding: "11px 16px", borderRadius: "10px", background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#4b5563", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
+                >
+                  Stay Logged In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogoutModal(false);
+                    logout();
+                  }}
+                  style={{ flex: 1, padding: "11px 16px", borderRadius: "10px", background: "#dc2626", border: "none", color: "#fff", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
+                >
+                  Yes, Sign Out
+                </button>
               </div>
             </div>
           </div>

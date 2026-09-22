@@ -18,6 +18,9 @@ function AdminLogin({ defaultError, onSuccess }) {
   );
 
   useEffect(() => {
+    // Clear any stale localStorage admin persistence so user is never auto-logged in
+    localStorage.removeItem("riwaaz_admin");
+
     if (location.state?.info) {
       setInfoMessage(location.state.info);
     }
@@ -47,14 +50,15 @@ function AdminLogin({ defaultError, onSuccess }) {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Save admin data in sessionStorage and localStorage
+        // Save admin data only in sessionStorage for active session
         const adminData = data.admin || {
           email,
           role: "admin",
           username: email.split("@")[0],
+          name: data.admin?.fullname || "Tamanna Soni",
         };
         sessionStorage.setItem("riwaaz_admin", JSON.stringify(adminData));
-        localStorage.setItem("riwaaz_admin", JSON.stringify(adminData));
+        localStorage.removeItem("riwaaz_admin");
 
         if (onSuccess) {
           onSuccess(adminData);
@@ -70,12 +74,13 @@ function AdminLogin({ defaultError, onSuccess }) {
       if (email.includes("admin") || email === "tamanna@riwaaz.com" || email === "admin@riwaaz.com") {
         const fallbackAdmin = {
           email,
+          name: "Tamanna Soni",
           fullname: "Tamanna Soni",
           username: "tamanna_admin",
           role: "admin",
         };
         sessionStorage.setItem("riwaaz_admin", JSON.stringify(fallbackAdmin));
-        localStorage.setItem("riwaaz_admin", JSON.stringify(fallbackAdmin));
+        localStorage.removeItem("riwaaz_admin");
         if (onSuccess) {
           onSuccess(fallbackAdmin);
         } else {

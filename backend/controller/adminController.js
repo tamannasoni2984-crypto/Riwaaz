@@ -1,6 +1,7 @@
 import Admin from "../models/adminModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+
 // GET all admins
 export const getAdmins = async (req, res) => {
   try {
@@ -64,48 +65,6 @@ export const registerAdmin = async (req, res) => {
 };
 
 // LOGIN admin
-// export const loginAdmin = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     if (!email || !password) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Please provide email and password",
-//       });
-//     }
-
-//     const admin = await Admin.findOne({ email });
-//     if (!admin) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Invalid email or password",
-//       });
-//     }
-
-//     const isMatch = await bcrypt.compare(password, admin.password);
-//     if (!isMatch) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Invalid email or password",
-//       });
-//     }
-
-//     const adminResponse = admin.toObject();
-//     delete adminResponse.password;
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Admin logged in successfully",
-//       data: adminResponse,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -140,9 +99,9 @@ export const loginAdmin = async (req, res) => {
         email: admin.email,
         role: "admin",
       },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || "riwaaz_secret_key_123",
       {
-        expiresIn: "1min",
+        expiresIn: "7d",
       }
     );
 

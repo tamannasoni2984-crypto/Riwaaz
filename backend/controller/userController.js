@@ -1,6 +1,5 @@
 import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
-
 import jwt from "jsonwebtoken";
 
 // GET all users
@@ -23,20 +22,22 @@ export const getUsers = async (req, res) => {
 // REGISTER user
 export const registerUser = async (req, res) => {
   try {
-    const { username, fullname, email, password, address, profileimage } = req.body;
+    const { username, fullname, email, password, address, profileimage, phone } = req.body;
 
-    if (!username || !fullname || !email || !password) {
+    if (!fullname || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Please provide username, fullname, email, and password",
+        message: "Please provide full name, email, and password.",
       });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const cleanUsername = username || email.split("@")[0] + "_" + Math.floor(Math.random() * 1000);
+
+    const existingUser = await User.findOne({ $or: [{ email }, { username: cleanUsername }] });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "User with this email or username already exists",
+        message: "User with this email or username already exists.",
       });
     }
 
@@ -51,21 +52,53 @@ export const registerUser = async (req, res) => {
     }
 
     const user = await User.create({
-      username,
+      username: cleanUsername,
       fullname,
       email,
-      password, // Password will be automatically hashed by userSchema.pre('save')
-      address: address || "",
+      password,
+      phone,
+      address: {
+        street: address?.street || "",
+        city: address?.city || "",
+        state: address?.state || "",
+        pincode: address?.pincode || "",
+      },
       profileimage: imagePath,
     });
 
-    const userResponse = user.toObject();
-    delete userResponse.password;
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        role: "user",
+      },
+      process.env.JWT_SECRET || "riwaaz_secret_key_123",
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const userResponse = {
+      id: user._id,
+      name: user.fullname,
+      email: user.email,
+      username: user.username,
+      phone: phone || "+91 98765 43210",
+      profileimage: user.profileimage,
+      memberStatus: "Silver Privilege Member",
+      joinedDate: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    };
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully",
-      data: userResponse,
+      message: "Account created successfully! Welcome to RIWAAZ.",
+      user: userResponse,
+      token,
     });
   } catch (error) {
     res.status(400).json({
@@ -76,98 +109,113 @@ export const registerUser = async (req, res) => {
 };
 
 // LOGIN user
-// export const loginUser = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found"
-//       });
-//     }
-//     if (password !== user.password) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Invalid password",
-//       });
-//     }
-//     const token = jwt.sign(
-//       {
-//         id: user._id,
-//         email: user.email,
-//         role: "user",
-//       },
-//       process.env.JWT_SECRET,
-//       {
-//         expiresIn: "1min",
-//       }
-//     );
-//   }
-//   catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// };
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // console.log("Login body:", req.body);
-    // console.log("Login email:", email);
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter both email and password.",
+      });
+    }
 
-    console.log("REQ BODY:", req.body);
-    console.log("EMAIL:", req.body.email);
     const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "No account found with this email address.",
       });
     }
-    const isPasswordCorrect = await bcrypt.compare(
-      password,
-      user.password
-    );
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
       return res.status(401).json({
         success: false,
-        message: "Invalid password",
+        message: "Invalid password. Please verify your credentials.",
       });
     }
+
     const token = jwt.sign(
       {
         id: user._id,
         email: user.email,
         role: "user",
       },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1min",
-      }
+      process.env.JWT_SECRET || "riwaaz_secret_key_123",
+      { expiresIn: "7d" }
     );
+
     res.cookie("token", token, {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    const userResponse = {
+      id: user._id,
+      name: user.fullname,
+      email: user.email,
+      username: user.username,
+      phone: user.phone || "",
+      address: user.address || {},
+      profileimage: user.profileimage,
+      memberStatus: "Gold VIP Member",
+      joinedDate: user.createdAt
+        ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+        : "January 2026",
+    };
+
     res.status(200).json({
       success: true,
-      message: "User logged in successfully",
-      user: {
-        id: user._id,
-        email: user.email,
-        role: "user",
-      },
+      message: "Welcome back to RIWAAZ!",
+      user: userResponse,
+      token,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
-  catch (error) {
+};
+
+// UPDATE user profile
+export const updateUserProfile = async (req, res) => {
+  try {
+    const { name, phone, address } = req.body;
+    const userId = req.user?.id || req.user?._id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    if (name) user.fullname = name;
+    if (phone !== undefined) user.phone = phone;
+    if (address) user.address = address;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully!",
+      user: {
+        id: user._id,
+        name: user.fullname,
+        email: user.email,
+        username: user.username,
+        phone: user.phone || "",
+        address: user.address,
+        profileimage: user.profileimage,
+      },
+    });
+  } catch (error) {
     res.status(500).json({
       success: false,
       message: error.message,
@@ -178,13 +226,12 @@ export const loginUser = async (req, res) => {
 // LOGOUT user
 export const logoutUser = (req, res) => {
   res.clearCookie("token");
-
-  res.json({
+  res.status(200).json({
     success: true,
-    message: "Lgout successfull"
+    message: "Logged out successfully.",
   });
 };
-// keep the rest for now
+
 // DELETE user
 export const deleteUser = async (req, res) => {
   try {

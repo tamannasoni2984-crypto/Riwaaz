@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 
+const reviewSchema = new mongoose.Schema({
+  user: { type: String, required: true, default: "Valued Connoisseur" },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  comment: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -32,6 +39,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "/images/ring.png",
     },
+    images: {
+      type: [String],
+      default: [],
+    },
     isNew: {
       type: Boolean,
       default: true,
@@ -49,6 +60,23 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 20,
     },
+    karat: {
+      type: [String],
+      default: ["18K Yellow Gold", "22K Royal Gold", "950 Platinum", "18K Rose Gold"],
+    },
+    sizes: {
+      type: [String],
+      default: ["12 (Standard)", "14", "16", "18", "Free Size"],
+    },
+    metal: {
+      type: String,
+      default: "18K Hallmarked Gold",
+    },
+    diamondClarity: {
+      type: String,
+      default: "VVS1 / EF Color",
+    },
+    reviews: [reviewSchema],
     isActive: {
       type: Boolean,
       default: true,
@@ -60,6 +88,6 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-const Product = mongoose.model("Product", productSchema);
+const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
 
 export default Product;

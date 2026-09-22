@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 import ConfirmModal from "../components/ConfirmModal";
 import { Link } from "react-router-dom";
@@ -9,15 +10,19 @@ import "./Wishlist.css";
 function Wishlist() {
   const { wishlistItems, removeFromWishlist, clearWishlist } = useWishlist();
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const { showToast } = useToast?.() || {};
 
   const [itemToRemove, setItemToRemove] = useState(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleAddToCart = (product) => {
-    addToCart(product);
-    if (showToast) {
-      showToast(`🛍️ "${product.name}" added to cart!`, "success");
+    const added = addToCart(product);
+    if (added) {
+      if (showToast) {
+        showToast(`🛍️ "${product.name}" added to cart!`, "success");
+      }
+      navigate("/cart");
     }
   };
 
@@ -83,7 +88,14 @@ function Wishlist() {
                     {/* Product Image & Title */}
                     <div className="col-product item-product-info">
                       <div className="item-thumbnail-box">
-                        <img src={product.image} alt={product.name} />
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/images/ring.png";
+                          }}
+                        />
                       </div>
                       <div className="item-title-col">
                         <span className="item-category-tag">{categoryLabel}</span>
@@ -119,76 +131,77 @@ function Wishlist() {
                         {isOutOfStock ? "SOLD OUT" : "SHOP NOW"}
                       </button>
 
-                      <button
-                        className="wishlist-remove-icon-btn"
-                        onClick={() => setItemToRemove(product)}
-                        title="Remove from Wishlist"
-                        aria-label="Remove item"
-                      >
-                        ✕
-                      </button>
-                    </div>
+
+                    <button
+                      className="wishlist-remove-icon-btn"
+                      onClick={() => setItemToRemove(product)}
+                      title="Remove from Wishlist"
+                      aria-label="Remove item"
+                    >
+                      ✕
+                    </button>
                   </div>
-                );
+                  </div>
+            );
               })}
-            </div>
+          </div>
 
             {/* Bottom Actions Bar */}
-            <div className="wishlist-bottom-actions">
-              <div className="actions-left-group">
-                <button
-                  className="wishlist-action-btn secondary-btn"
-                  onClick={() => setShowClearConfirm(true)}
-                >
-                  CLEAR WISHLIST
-                </button>
-                <Link to="/collections" className="wishlist-action-btn secondary-btn">
-                  UPDATE WISHLIST
-                </Link>
-              </div>
-
-              <div className="actions-right-group">
-                <Link to="/collections" className="wishlist-action-btn primary-btn">
-                  CONTINUE SHOPPING
-                </Link>
-              </div>
-            </div>
+        <div className="wishlist-bottom-actions">
+          <div className="actions-left-group">
+            <button
+              className="wishlist-action-btn secondary-btn"
+              onClick={() => setShowClearConfirm(true)}
+            >
+              CLEAR WISHLIST
+            </button>
+            <Link to="/collections" className="wishlist-action-btn secondary-btn">
+              UPDATE WISHLIST
+            </Link>
           </div>
-        )}
+
+          <div className="actions-right-group">
+            <Link to="/collections" className="wishlist-action-btn primary-btn">
+              CONTINUE SHOPPING
+            </Link>
+          </div>
+        </div>
       </div>
+        )}
+    </div>
 
-      {/* Single Item Removal Modal */}
-      <ConfirmModal
-        isOpen={!!itemToRemove}
-        title="Remove from Wishlist?"
-        message={
-          itemToRemove
-            ? `Are you sure you want to remove "${itemToRemove.name}" from your wishlist?`
-            : ""
+      {/* Single Item Removal Modal */ }
+  <ConfirmModal
+    isOpen={!!itemToRemove}
+    title="Remove from Wishlist?"
+    message={
+      itemToRemove
+        ? `Are you sure you want to remove "${itemToRemove.name}" from your wishlist?`
+        : ""
+    }
+    confirmText="Yes, Remove"
+    onConfirm={() => {
+      if (itemToRemove) {
+        removeFromWishlist(itemToRemove.id);
+        setItemToRemove(null);
+        if (showToast) {
+          showToast("Item removed from wishlist.", "info");
         }
-        confirmText="Yes, Remove"
-        onConfirm={() => {
-          if (itemToRemove) {
-            removeFromWishlist(itemToRemove.id);
-            setItemToRemove(null);
-            if (showToast) {
-              showToast("Item removed from wishlist.", "info");
-            }
-          }
-        }}
-        onClose={() => setItemToRemove(null)}
-      />
+      }
+    }}
+    onClose={() => setItemToRemove(null)}
+  />
 
-      {/* Clear All Wishlist Modal */}
-      <ConfirmModal
-        isOpen={showClearConfirm}
-        title="Clear Wishlist?"
-        message="Are you sure you want to clear all items from your wishlist?"
-        confirmText="Yes, Clear All"
-        onConfirm={handleClearWishlist}
-        onClose={() => setShowClearConfirm(false)}
-      />
-    </main>
+  {/* Clear All Wishlist Modal */ }
+  <ConfirmModal
+    isOpen={showClearConfirm}
+    title="Clear Wishlist?"
+    message="Are you sure you want to clear all items from your wishlist?"
+    confirmText="Yes, Clear All"
+    onConfirm={handleClearWishlist}
+    onClose={() => setShowClearConfirm(false)}
+  />
+    </main >
   );
 }
 
