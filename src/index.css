@@ -1,0 +1,62 @@
+/* Global RIWAAZ Theme & Reset Styles */
+
+:root {
+  --primary-gold: #d4af37;
+  --dark-gold: #b8860b;
+  --light-gold: #f3e5ab;
+  --bg-light: #faf9f6;
+  --bg-dark: #0d0d0d;
+  --text-dark: #111111;
+  --text-light: #ffffff;
+  --text-muted: #666666;
+  --border-light: #eaeaea;
+
+  font-family: 'Cinzel', 'Playfair Display', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--bg-light);
+  color: var(--text-dark);
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography Defaults */
+h1, h2, h3, h4, h5, h6 {
+  font-family: inherit;
+  color: inherit;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
