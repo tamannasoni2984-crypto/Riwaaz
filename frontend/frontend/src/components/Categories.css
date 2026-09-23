@@ -1,0 +1,132 @@
+.categories {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 5%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.categories-heading {
+  max-width: 650px;
+  margin: 0 auto 50px;
+}
+
+.categories-heading p:first-child {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #b8860b;
+  margin-bottom: 10px;
+}
+
+.categories-heading h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: #111111;
+  margin: 10px 0;
+}
+
+.categories-heading p:last-child {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #666666;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 25px;
+}
+
+.category-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  min-height: 380px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+}
+
+.category-card img {
+  width: 100%;
+  height: 380px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.category-card:hover img {
+  transform: scale(1.08);
+}
+
+.category-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 30px 20px;
+  text-align: left;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.4) 60%,
+    transparent 100%
+  );
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.category-content h3 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.category-content a {
+  display: inline-block;
+  padding: 10px 22px;
+  border-radius: 20px;
+  border: none;
+  text-decoration: none;
+  background: linear-gradient(135deg, #d4af37, #b8860b);
+  color: #111111;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.25s ease;
+}
+
+.category-content a:hover {
+  background: #ffffff;
+  color: #111111;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 950px) {
+  .category-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 550px) {
+  .categories {
+    padding: 50px 4%;
+  }
+
+  .categories-heading h2 {
+    font-size: 30px;
+  }
+
+  .category-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .category-card,
+  .category-card img {
+    height: 300px;
+  }
+}
