@@ -1,0 +1,529 @@
+/* =====================================================
+   RIWAAZ CHECKOUT PAGE
+===================================================== */
+
+.checkout-page {
+    min-height: 100vh;
+    padding: 120px 30px 60px;
+
+    background: #30313a;
+    color: #ffffff;
+
+    box-sizing: border-box;
+}
+
+
+/* =====================================================
+   MAIN CONTAINER
+===================================================== */
+
+.checkout-container {
+    width: 100%;
+    max-width: 1200px;
+
+    margin: 0 auto;
+}
+
+.checkout-container>h1 {
+    margin-bottom: 35px;
+
+    text-align: center;
+
+    font-size: 34px;
+    font-weight: 600;
+
+    letter-spacing: 1px;
+
+    color: #ffffff;
+}
+
+
+/* =====================================================
+   CHECKOUT CONTENT
+===================================================== */
+
+.checkout-content {
+    display: grid;
+
+    grid-template-columns: 1.2fr 0.8fr;
+
+    gap: 30px;
+
+    align-items: start;
+}
+
+
+/* =====================================================
+   COMMON BOX
+===================================================== */
+
+.customer-box,
+.payment-box {
+    padding: 25px;
+
+    background: #1d1e25;
+
+    border: 1px solid #30313a;
+
+    border-radius: 16px;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+
+    box-sizing: border-box;
+}
+
+.customer-box h2,
+.payment-box h2 {
+    margin-top: 0;
+    margin-bottom: 22px;
+
+    font-size: 21px;
+    font-weight: 600;
+
+    color: #ffffff;
+}
+
+
+/* =====================================================
+   SHIPPING ADDRESS
+===================================================== */
+
+.address-option {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 14px;
+
+    width: 100%;
+
+    padding: 18px;
+
+    margin-bottom: 14px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #353640;
+
+    border-radius: 12px;
+
+    background: #181920;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.address-option:hover {
+    border-color: #777;
+
+    background: #202128;
+
+    transform: translateY(-1px);
+}
+
+
+/* Radio */
+
+.address-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+
+    margin-top: 3px;
+
+    flex-shrink: 0;
+
+    accent-color: #c9a45c;
+
+    cursor: pointer;
+}
+
+
+/* Address heading */
+
+.address-option strong {
+    display: block;
+
+    margin-bottom: 7px;
+
+    font-size: 16px;
+
+    color: #ffffff;
+}
+
+
+/* Address text */
+
+.address-option p {
+    margin: 0;
+
+    color: #a8a8b2;
+
+    font-size: 14px;
+
+    line-height: 1.6;
+}
+
+
+/* Selected address */
+
+.address-option:has(input:checked) {
+    border-color: #c9a45c;
+
+    background: #232229;
+
+    box-shadow:
+        0 0 0 1px rgba(201, 164, 92, 0.15);
+}
+
+.address-option:has(input:checked) strong {
+    color: #c9a45c;
+}
+
+
+/* =====================================================
+   NEW ADDRESS FORM
+===================================================== */
+
+.new-address-form {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 13px;
+
+    margin-top: 18px;
+
+    padding: 18px;
+
+    background: #181920;
+
+    border: 1px solid #30313a;
+
+    border-radius: 12px;
+}
+
+.new-address-form input {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 13px 14px;
+
+    border: 1px solid #383944;
+
+    border-radius: 8px;
+
+    outline: none;
+
+    background: #16171d;
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    transition: border-color 0.2s ease;
+}
+
+.new-address-form input::placeholder {
+    color: #777985;
+}
+
+.new-address-form input:focus {
+    border-color: #c9a45c;
+}
+
+
+/* =====================================================
+   ORDER SUMMARY
+===================================================== */
+
+.payment-box {
+    position: sticky;
+
+    top: 100px;
+}
+
+
+/* =====================================================
+   CHECKOUT ITEMS
+===================================================== */
+
+.checkout-item {
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    padding: 14px 0;
+
+    border-bottom: 1px solid #30313a;
+}
+
+.checkout-item:first-of-type {
+    padding-top: 0;
+}
+
+.checkout-item img {
+    width: 70px;
+    height: 70px;
+
+    object-fit: cover;
+
+    border-radius: 10px;
+
+    border: 1px solid #353640;
+
+    background: #16171d;
+}
+
+.checkout-item h3 {
+    margin: 0 0 6px;
+
+    font-size: 15px;
+
+    font-weight: 500;
+
+    color: #ffffff;
+}
+
+.checkout-item p {
+    margin: 3px 0;
+
+    font-size: 13px;
+
+    color: #999aa5;
+}
+
+
+/* =====================================================
+   TOTAL
+===================================================== */
+
+.checkout-total {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 20px 0;
+
+    margin-top: 5px;
+
+    border-bottom: 1px solid #30313a;
+}
+
+.checkout-total strong:first-child {
+    color: #b5b5be;
+
+    font-size: 15px;
+}
+
+.checkout-total strong:last-child {
+    color: #c9a45c;
+
+    font-size: 21px;
+}
+
+
+/* =====================================================
+   PAYMENT METHOD
+===================================================== */
+
+.payment-method {
+    margin-top: 25px;
+}
+
+.payment-method h2 {
+    margin-bottom: 15px;
+}
+
+
+/*
+   IMPORTANT:
+   Payment options are vertically stacked.
+*/
+
+.payment-method label {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    width: 100%;
+
+    min-height: 52px;
+
+    padding: 14px 16px;
+
+    margin-bottom: 12px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #353640;
+
+    border-radius: 10px;
+
+    background: #181920;
+
+    color: #eeeeee;
+
+    font-size: 15px;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease;
+}
+
+.payment-method label:hover {
+    border-color: #777;
+
+    background: #202128;
+}
+
+
+/* Payment radio */
+
+.payment-method input[type="radio"] {
+    width: 18px;
+    height: 18px;
+
+    flex-shrink: 0;
+
+    accent-color: #c9a45c;
+
+    cursor: pointer;
+}
+
+
+/* Selected payment method */
+
+.payment-method label:has(input:checked) {
+    border-color: #c9a45c;
+
+    background: #232229;
+
+    color: #c9a45c;
+}
+
+
+/* =====================================================
+   PAY / PLACE ORDER BUTTON
+===================================================== */
+
+.pay-button {
+    width: 100%;
+
+    margin-top: 20px;
+
+    padding: 15px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: #c9a45c;
+
+    color: #16171d;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+    letter-spacing: 0.4px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.pay-button:hover {
+    background: #d8b66d;
+
+    transform: translateY(-1px);
+
+    box-shadow: 0 8px 20px rgba(201, 164, 92, 0.18);
+}
+
+.pay-button:active {
+    transform: translateY(0);
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 900px) {
+
+    .checkout-page {
+        padding: 100px 20px 40px;
+    }
+
+    .checkout-content {
+        grid-template-columns: 1fr;
+    }
+
+    .payment-box {
+        position: static;
+    }
+
+}
+
+
+/* =====================================================
+   SMALL MOBILE
+===================================================== */
+
+@media (max-width: 500px) {
+
+    .checkout-page {
+        padding: 90px 14px 30px;
+    }
+
+    .checkout-container>h1 {
+        font-size: 26px;
+
+        margin-bottom: 25px;
+    }
+
+    .customer-box,
+    .payment-box {
+        padding: 18px;
+
+        border-radius: 12px;
+    }
+
+    .customer-box h2,
+    .payment-box h2 {
+        font-size: 19px;
+    }
+
+    .address-option {
+        padding: 14px;
+    }
+
+    .checkout-item img {
+        width: 60px;
+        height: 60px;
+    }
+
+    .checkout-total strong:last-child {
+        font-size: 19px;
+    }
+
+    .pay-button {
+        padding: 14px;
+    }
+}
