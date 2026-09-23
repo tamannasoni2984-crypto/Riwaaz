@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <!-- RIWAAZ Luxury Favicon with cache-busting -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3" />
+  <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg?v=3" />
+  <link rel="apple-touch-icon" href="/images/ring-removebg-preview.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RIWAAZ | Luxury Solitaire & Fine Jewelry</title>
+</head>
+
+<body>
+  <form action="http://localhost:5000/api/users/register" method="POST" enctype="multipart/form-data">
+    <input type="text" name="username" required>
+    <input type="text" name="fullname" required>
+    <input type="email" name="email" required>
+    <input type="password" name="password" required>
+    <input type="text" name="address" required>
+    <input type="file" name="image" required>
+    <input type="file" name="profileimage" required>
+    <button type="submit">Register User</button>
+  </form>
+  <form action="http://localhost:5000/api/users/login" method="POST">
+    <input type="text" name="username" required>
+    <input type="password" name="password" required>
+    <button type="submit">Login User</button>
+  </form>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

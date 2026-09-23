@@ -1,0 +1,426 @@
+/* =====================================================
+   RIWAAZ - MY ORDERS
+===================================================== */
+
+.my-orders-page {
+    min-height: 100vh;
+
+    padding: 120px 30px 60px;
+
+    background: #16171d;
+
+    color: #ffffff;
+
+    box-sizing: border-box;
+}
+
+
+/* =====================================================
+   MAIN CONTAINER
+===================================================== */
+
+.my-orders-container {
+    width: 100%;
+
+    max-width: 1100px;
+
+    margin: 0 auto;
+}
+
+.my-orders-container>h1 {
+    margin: 0 0 35px;
+
+    text-align: center;
+
+    font-size: 34px;
+
+    font-weight: 600;
+
+    letter-spacing: 1px;
+
+    color: #ffffff;
+}
+
+
+/* =====================================================
+   ORDER CARD
+===================================================== */
+
+.order-card {
+    margin-bottom: 25px;
+
+    padding: 24px;
+
+    background: #1d1e25;
+
+    border: 1px solid #30313a;
+
+    border-radius: 16px;
+
+    box-sizing: border-box;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.order-card:hover {
+    border-color: #4a4b56;
+
+    transform: translateY(-2px);
+}
+
+
+/* =====================================================
+   ORDER HEADER
+===================================================== */
+
+.order-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 20px;
+
+    padding-bottom: 18px;
+
+    border-bottom: 1px solid #30313a;
+}
+
+.order-header h3 {
+    margin: 0 0 7px;
+
+    font-size: 17px;
+
+    font-weight: 600;
+
+    color: #ffffff;
+}
+
+.order-header p {
+    margin: 0;
+
+    color: #8f909b;
+
+    font-size: 13px;
+}
+
+
+/* =====================================================
+   ORDER STATUS
+===================================================== */
+
+.order-status {
+    padding: 7px 14px;
+
+    border-radius: 20px;
+
+    background: rgba(201, 164, 92, 0.12);
+
+    border: 1px solid rgba(201, 164, 92, 0.4);
+
+    color: #c9a45c;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+}
+
+
+/* =====================================================
+   ORDER ITEMS
+===================================================== */
+
+.order-items {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 15px;
+
+    padding: 20px 0;
+}
+
+.order-item {
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+
+    padding-bottom: 15px;
+
+    border-bottom: 1px solid #292a32;
+}
+
+.order-item:last-child {
+    padding-bottom: 0;
+
+    border-bottom: none;
+}
+
+
+/* =====================================================
+   PRODUCT IMAGE
+===================================================== */
+
+.order-item img {
+    width: 75px;
+
+    height: 75px;
+
+    object-fit: cover;
+
+    flex-shrink: 0;
+
+    border-radius: 10px;
+
+    border: 1px solid #353640;
+
+    background: #16171d;
+}
+
+
+/* =====================================================
+   PRODUCT INFORMATION
+===================================================== */
+
+.order-item h4 {
+    margin: 0 0 7px;
+
+    font-size: 15px;
+
+    font-weight: 500;
+
+    color: #ffffff;
+}
+
+.order-item p {
+    margin: 3px 0;
+
+    color: #999aa5;
+
+    font-size: 13px;
+}
+
+
+/* =====================================================
+   ORDER FOOTER
+===================================================== */
+
+.order-footer {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 15px;
+
+    padding: 18px 0;
+
+    border-top: 1px solid #30313a;
+
+    border-bottom: 1px solid #30313a;
+}
+
+.order-footer p {
+    margin: 0;
+
+    color: #999aa5;
+
+    font-size: 13px;
+
+    line-height: 1.6;
+}
+
+.order-footer strong {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: #ffffff;
+
+    font-size: 13px;
+}
+
+
+/* =====================================================
+   VIEW DETAILS
+===================================================== */
+
+.order-actions {
+    display: flex;
+
+    justify-content: flex-end;
+
+    margin-top: 18px;
+}
+
+.order-actions button {
+    padding: 10px 20px;
+
+    border: 1px solid #c9a45c;
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: #c9a45c;
+
+    font-size: 14px;
+
+    font-weight: 500;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.order-actions button:hover {
+    background: #c9a45c;
+
+    color: #16171d;
+
+    transform: translateY(-1px);
+}
+
+
+/* =====================================================
+   NO ORDERS
+===================================================== */
+
+.no-orders {
+    padding: 60px 20px;
+
+    text-align: center;
+
+    background: #1d1e25;
+
+    border: 1px solid #30313a;
+
+    border-radius: 16px;
+}
+
+.no-orders h2 {
+    margin: 0 0 10px;
+
+    font-size: 22px;
+
+    color: #ffffff;
+}
+
+.no-orders p {
+    margin: 0;
+
+    color: #92939e;
+
+    font-size: 14px;
+}
+
+
+/* =====================================================
+   LOADING
+===================================================== */
+
+.orders-loading {
+    min-height: 100vh;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    margin: 0;
+
+    background: #16171d;
+
+    color: #c9a45c;
+
+    font-size: 20px;
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 800px) {
+
+    .my-orders-page {
+        padding: 100px 20px 40px;
+    }
+
+    .my-orders-container>h1 {
+        font-size: 28px;
+    }
+
+    .order-footer {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 550px) {
+
+    .my-orders-page {
+        padding: 90px 14px 30px;
+    }
+
+    .my-orders-container>h1 {
+        font-size: 26px;
+
+        margin-bottom: 25px;
+    }
+
+    .order-card {
+        padding: 17px;
+
+        border-radius: 12px;
+    }
+
+    .order-header {
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        gap: 12px;
+    }
+
+    .order-status {
+        align-self: flex-start;
+    }
+
+    .order-item img {
+        width: 60px;
+
+        height: 60px;
+    }
+
+    .order-footer {
+        grid-template-columns: 1fr;
+
+        gap: 12px;
+    }
+
+    .order-actions {
+        justify-content: stretch;
+    }
+
+    .order-actions button {
+        width: 100%;
+    }
+}
